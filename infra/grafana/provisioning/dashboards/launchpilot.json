@@ -1,0 +1,13 @@
+{
+  "uid": "launchpilot-sli",
+  "title": "LaunchPilot - Service Level Indicators",
+  "schemaVersion": 39,
+  "version": 1,
+  "refresh": "10s",
+  "panels": [
+    {"id": 1, "title": "Availability (5m)", "type": "timeseries", "gridPos": {"h": 8, "w": 12, "x": 0, "y": 0}, "targets": [{"expr": "launchpilot:availability_5m", "legendFormat": "availability", "refId": "A"}]},
+    {"id": 2, "title": "p95 HTTP latency (seconds)", "type": "timeseries", "gridPos": {"h": 8, "w": 12, "x": 12, "y": 0}, "targets": [{"expr": "launchpilot:latency_p95_5m", "legendFormat": "p95", "refId": "A"}]},
+    {"id": 3, "title": "Evaluation cache hits / misses", "type": "timeseries", "gridPos": {"h": 8, "w": 12, "x": 0, "y": 8}, "targets": [{"expr": "sum by (result) (rate(launchpilot_eval_cache_total[5m]))", "legendFormat": "{{result}}", "refId": "A"}]},
+    {"id": 4, "title": "HTTP throughput (req/s)", "type": "timeseries", "gridPos": {"h": 8, "w": 12, "x": 12, "y": 8}, "targets": [{"expr": "sum(rate(launchpilot_http_requests_total[5m]))", "legendFormat": "RPS", "refId": "A"}]}
+  ]
+}

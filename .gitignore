@@ -1,0 +1,33 @@
+# Python
+.venv/
+__pycache__/
+*.py[cod]
+.pytest_cache/
+.ruff_cache/
+.coverage
+# JS
+node_modules/
+dist/
+.vite/
+# Local runtime and secrets
+.env
+.env.*
+!.env.example
+*.db
+*.db-journal
+*.db-shm
+*.db-wal
+.DS_Store
+.idea/
+.vscode/
+# Build/OS
+*.log
+playwright-report/
+test-results/
+*.tsbuildinfo
+.terraform/
+*.tfstate
+*.tfstate.*
+*.tfvars
+!*.tfvars.example
+crash.log

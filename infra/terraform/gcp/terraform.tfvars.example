@@ -1,0 +1,11 @@
+# Copy to terraform.tfvars (ignored by Git) and edit.
+project_id    = "YOUR_GCP_PROJECT_ID"
+region        = "us-central1"
+image_url     = "us-central1-docker.pkg.dev/YOUR_GCP_PROJECT_ID/launchpilot/api:v2"
+oidc_issuer   = "https://YOUR-IDP.example.com/realms/launchpilot"
+oidc_audience = "launchpilot-api"
+# Set TF_VAR_db_password in the shell; do not add it to this file.
+# Optional managed Kafka; omit for initial API-only deployment.
+# kafka_bootstrap_servers = "your-kafka.example.com:9092"
+# kafka_sasl_username = "your-service-user"
+# enable_cloud_slo = true

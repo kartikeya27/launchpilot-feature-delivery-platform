@@ -1,0 +1,17 @@
+groups:
+  - name: launchpilot-slo
+    rules:
+      - record: launchpilot:availability_5m
+        expr: sum(rate(launchpilot_http_requests_total{status!~"5.."}[5m])) / clamp_min(sum(rate(launchpilot_http_requests_total[5m])), 0.000001)
+      - record: launchpilot:latency_p95_5m
+        expr: histogram_quantile(0.95, sum by (le) (rate(launchpilot_http_duration_seconds_bucket[5m])))
+      - alert: LaunchPilotHighErrorRate
+        expr: launchpilot:availability_5m < 0.999 and sum(rate(launchpilot_http_requests_total[5m])) > 0.1
+        for: 10m
+        labels: {severity: warning}
+        annotations: {summary: "LaunchPilot availability below 99.9% SLO"}
+      - alert: LaunchPilotHighP95Latency
+        expr: launchpilot:latency_p95_5m > 0.2 and sum(rate(launchpilot_http_requests_total[5m])) > 0.1
+        for: 10m
+        labels: {severity: warning}
+        annotations: {summary: "LaunchPilot p95 exceeds 200 ms objective"}
