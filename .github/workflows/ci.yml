@@ -81,9 +81,15 @@ jobs:
         env:
           CI: 'true'
           VITE_AUTH_MODE: demo
-      - uses: actions/upload-artifact@v4
-        if: failure()
+      # Capture the HTML report, screenshots, video, and traces even on success.
+      # CI uses only synthetic/demo identities: artifacts on public repositories can be viewed by readers.
+      - name: Upload Playwright browser evidence
+        uses: actions/upload-artifact@v4
+        if: always()
         with:
-          name: playwright-report
-          path: frontend/test-results/
+          name: playwright-browser-evidence
+          path: |
+            frontend/playwright-report/
+            frontend/test-results/
+          if-no-files-found: warn
           retention-days: 7

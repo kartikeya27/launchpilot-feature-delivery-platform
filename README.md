@@ -208,3 +208,24 @@ cd backend
 ```
 
 The repository also contains PostgreSQL integration tests, Playwright browser/accessibility tests, security workflows, and a Terraform deployment blueprint. **Those configurations are included, but full end-to-end and public-cloud deployment validation must be performed in the target environment.**
+
+## Inspect Browser Automation Evidence
+
+The **CI** workflow runs Playwright against a temporary local FastAPI + React instance in headless Chromium, using synthetic demo data. Each CI run saves an HTML test report, screenshots, browser videos, and action/network traces—including when tests pass.
+
+1. Open the repository's **Actions** tab, select the latest **CI** run on **main**, and open the **e2e** job to see the browser-test summary.
+2. At the bottom of that workflow run, download the **playwright-browser-evidence** artifact.
+3. Unzip the artifact and open **playwright-report/index.html** in a browser for per-test results, screenshots, videos, and trace attachments.
+4. To inspect a trace independently, use Playwright Trace Viewer: run `cd frontend && npx playwright show-trace path/to/trace.zip`, or open https://trace.playwright.dev and load the trace manually.
+
+Artifacts are retained for **7 days** and are accessible to readers of this public repository. The CI run uses **demo authentication and synthetic identifiers**, not live accounts or production data. The separate OIDC browser check is skipped in demo-auth mode; passing the default suite does **not** verify a real Keycloak sign-in flow.
+
+For a visible Chromium window on your own machine (after installing backend and frontend dependencies):
+
+```bash
+cd frontend
+npx playwright install chromium
+npx playwright test --headed --workers=1
+# Or use the interactive test explorer:
+npx playwright test --ui
+```
