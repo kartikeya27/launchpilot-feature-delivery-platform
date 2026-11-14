@@ -84,7 +84,7 @@ jobs:
       # Capture the HTML report, screenshots, video, and traces even on success.
       # CI uses only synthetic/demo identities: artifacts on public repositories can be viewed by readers.
       - name: Upload Playwright browser evidence
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@v7
         if: always()
         with:
           name: playwright-browser-evidence
