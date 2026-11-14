@@ -10,6 +10,8 @@ COPY frontend/ ./
 RUN npm run build
 
 FROM python:3.12-slim
+# Install patched Debian packages available at image build time.
+RUN apt-get update && apt-get upgrade -y && rm -rf /var/lib/apt/lists/*
 WORKDIR /work
 ENV PYTHONUNBUFFERED=1 PYTHONDONTWRITEBYTECODE=1 DATABASE_URL=sqlite:////data/launchpilot.db
 COPY backend/requirements.txt ./backend/requirements.txt
