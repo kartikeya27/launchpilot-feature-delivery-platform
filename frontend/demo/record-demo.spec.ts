@@ -37,7 +37,7 @@ test('record a verified checkout rollout and manual recovery walkthrough', async
 
   await scene(page, '01 / 06  •  Keycloak OIDC login and admin-only release controls', 2200)
   await page.getByLabel('Environment').selectOption('staging')
-  const key = `portfolio_checkout_${Date.now().toString(36)}`
+  const key = `demo_checkout_${Date.now().toString(36)}`
 
   await scene(page, '02 / 06  •  Create a staging-only checkout feature flag')
   await page.getByRole('button', { name: 'New flag' }).click()
