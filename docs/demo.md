@@ -1,18 +1,18 @@
-# LaunchPilot portfolio demo — 90–120 seconds
+# LaunchPilot product demonstration — 90–120 seconds
 
 This demo records the **real Chromium UI** using the existing local Docker/Keycloak/PostgreSQL/Redis/Kafka stack. It is reproducible and uses only synthetic, staging-only data. It does **not** simulate public production traffic.
 
 ## Watch the recording on GitHub
 
-1. Open [Portfolio demo — browser recording](../.github/workflows/portfolio-demo.yml) in the repository Actions tab.
+1. Open [Product demonstration — browser recording](../.github/workflows/product-demo.yml) in the repository Actions tab.
 2. Run the workflow manually (**Run workflow**), or open a successful push/PR run.
-3. Under **Artifacts**, download **launchpilot-demo-video**. The ZIP contains `launchpilot-portfolio-demo.webm`.
+3. Under **Artifacts**, download **launchpilot-demo-video**. The ZIP contains `launchpilot-product-demo.webm`.
 4. Download **portfolio-demo-evidence** for the Playwright HTML report, screenshots and action/network trace.
 5. These artifacts expire after **7 days**. To embed a permanent demo in the README, review the downloaded WebM and host it on a platform you control.
 
 Because the actual recording requires a browser and running containers, the committed source contains the **repeatable recording script** and the GitHub workflow, not a fake or AI-rendered video.
 
-## Storyboard / presenter voiceover
+## Demonstration storyboard and optional narration
 
 | Screen | Approx. narration | What the real browser shows |
 | --- | --- | --- |
@@ -34,10 +34,10 @@ docker compose -f compose.production.yaml up --build -d
 cd frontend
 npm install
 npx playwright install chromium
-npx playwright test --config=playwright.portfolio.config.ts --headed
+npx playwright test --config=playwright.demo.config.ts --headed
 ```
 
-Find `video.webm` inside `frontend/test-results/` or open the HTML report. On GitHub, the workflow copies the recording to the clearly named `launchpilot-portfolio-demo.webm` file.
+Find `video.webm` inside `frontend/test-results/` or open the HTML report. On GitHub, the workflow copies the recording to the clearly named `launchpilot-product-demo.webm` file.
 
 To show detailed browser actions, open the trace:
 
