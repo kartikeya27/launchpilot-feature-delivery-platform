@@ -61,7 +61,7 @@
       "credentials": [
         {
           "type": "password",
-          "value": "AdminDemo123!",
+          "value": "${DEMO_ADMIN_PASSWORD}",
           "temporary": false
         }
       ],
@@ -80,7 +80,7 @@
       "credentials": [
         {
           "type": "password",
-          "value": "ViewerDemo123!",
+          "value": "${DEMO_VIEWER_PASSWORD}",
           "temporary": false
         }
       ],
