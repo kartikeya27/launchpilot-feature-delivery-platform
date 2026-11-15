@@ -351,9 +351,7 @@ resource "google_monitoring_service" "launchpilot" {
   count = var.enable_cloud_slo ? 1 : 0
   service_id = "launchpilot-service"
   display_name = "LaunchPilot API"
-  custom {
-
-}
+  
   depends_on = [google_project_service.apis]
 
 }
