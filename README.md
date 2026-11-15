@@ -53,63 +53,100 @@ See [Architecture](docs/architecture.md) for the complete event sequence, failur
 
 ## Try it locally
 
-### Option A — Fast demo (no Docker)
+### 1. Get the latest code on your Mac
 
-Requirements: Python 3.11/3.12, Node.js 22+, npm.
+**First-time setup — clone the repository:**
 
 ```bash
 git clone https://github.com/kartikeya27/launchpilot-feature-delivery-platform.git
 cd launchpilot-feature-delivery-platform
+```
+
+**Already cloned — update your existing checkout:**
+
+From the `launchpilot-feature-delivery-platform` directory, first save or commit any local changes shown by `git status`, then run:
+
+```bash
+git status
+git switch main
+git pull --ff-only origin main
+ls -l scripts/setup_local_credentials.py
+```
+
+The last command confirms the credential setup script is present. If `git pull` says `Already up to date` but that file is missing, verify that you are on `main` and that the `origin` remote points to this repository (`git remote -v`).
+
+### 2. Choose a local run mode
+
+#### Option A — Fast demo (no Docker)
+
+Requirements: Python 3.11/3.12, Node.js 22+, npm. From the repository root:
+
+```bash
 ./scripts/start.sh
 ```
 
 - UI: http://127.0.0.1:5173
 - OpenAPI: http://127.0.0.1:8000/docs
 
-This option uses **SQLite and localhost-only demo authentication**. It does **not** run Kafka, Redis, Keycloak, or PostgreSQL.
+This option uses **SQLite and localhost-only demo authentication**. It does **not** run Kafka, Redis, Keycloak, or PostgreSQL; no Keycloak credentials are required.
 
-### Option B — Real local integration stack
+#### Option B — Full local integration stack (Docker Desktop)
 
-Requirements: Docker Desktop (Mac Apple Silicon supported; provide adequate memory, ideally at least 8 GB).
+Requirements: Docker Desktop (Mac Apple Silicon supported; allocate adequate memory, ideally at least 8 GB), and Python 3.11+ for credential setup.
+
+**Generate unique local credentials** from the repository root before starting the stack:
 
 ```bash
 python3 scripts/setup_local_credentials.py
 docker compose -f compose.production.yaml config --quiet
-docker compose -f compose.production.yaml up --build -d
-docker compose -f compose.production.yaml ps
 ```
 
-Open http://localhost:8000 (use **localhost**, not 127.0.0.1, for the local Keycloak redirect). The repository seeds synthetic, disposable local accounts with **random, machine-local passwords**:
+The setup script creates an ignored `.env` file with randomly generated **local-only** passwords and restricts its permissions to the current user. Running the script again preserves existing, nonempty values. The Compose validation command exits without output when the configuration is valid.
 
-| Role | User | Permissions |
+**Start the application and verify its containers:**
+
+```bash
+docker compose -f compose.production.yaml up --build -d
+docker compose -f compose.production.yaml ps
+curl -fsS http://localhost:8000/api/health/ready
+```
+
+Open **http://localhost:8000** (use **localhost**, not `127.0.0.1`, for the local Keycloak redirect).
+
+The integration stack creates synthetic local identities with separate permissions. No account passwords are published in this README:
+
+| Role | Username | Permissions |
 | --- | --- | --- |
-| Admin | `demo-admin` | Manage flags, rollouts and rollback |
-| Viewer | `demo-viewer` | Read-only operations |
+| Administrator | `demo-admin` | Manage feature flags, rollouts and rollback |
+| Viewer | `demo-viewer` | Read-only release operations |
 
-Run `python3 scripts/setup_local_credentials.py` once before launching the Compose stack. It generates unique credentials in the **gitignored** `.env` file (owner-only permissions), preserving any other settings already there. For the local demo account passwords, run this **on your Mac**:
+To sign in, read your generated **demo-account** credentials from your own machine, not from GitHub:
 
 ```bash
 grep -E '^DEMO_(ADMIN|VIEWER)_PASSWORD=' .env
 ```
 
-Do not share that command's output or commit `.env`. The scripts and browser tests read the locally generated values; GitHub Actions generates independent disposable values automatically.
+The output contains secrets. Do **not** paste it into issues, screenshots, chat messages, logs or commits. The `.env` file is excluded by `.gitignore`. Local Playwright tests load these credentials from `.env`, while GitHub Actions generates separate disposable values for each run.
 
-**Existing local Keycloak users:** realm passwords are applied on initial import. If your Mac already ran the previous Keycloak container, recreate only the **disposable Keycloak container** to import the new demo passwords:
+**Upgrading an older local Keycloak demo:** If you previously ran this stack with the old seeded logins, the already-imported Keycloak realm may still have the old passwords. Recreate the disposable local Keycloak container, then start the full stack:
 
 ```bash
 docker compose -f compose.production.yaml up -d --force-recreate keycloak
+docker compose -f compose.production.yaml up --build -d
 ```
 
-Do not use `down -v` on a stack with data you want to keep. Existing PostgreSQL credentials remain unchanged for compatibility with saved local volumes. Never use these demo accounts, service credentials or this local configuration in a public deployment. Other local services: [Keycloak](http://localhost:8081), [Jaeger](http://localhost:16686), [Prometheus](http://localhost:9090), and [Grafana](http://localhost:3000).
+This does not remove PostgreSQL named volumes. Avoid `docker compose down -v` if you want to keep local data. Existing PostgreSQL credentials remain unchanged for compatibility with saved volumes.
+
+**Check logs or stop containers safely:**
 
 ```bash
-curl -fsS http://localhost:8000/api/health/ready
 docker compose -f compose.production.yaml logs --tail=50 api publisher consumer guardrail
-# Stop without deleting named volumes:
 docker compose -f compose.production.yaml down
 ```
 
-**Never run `down -v` against a stack containing data you want to keep.** The full-stack CI workflow uses disposable test volumes and cleans those up automatically.
+Other local services: [Keycloak](http://localhost:8081), [Jaeger](http://localhost:16686), [Prometheus](http://localhost:9090), and [Grafana](http://localhost:3000).
+
+**Security boundary:** These credentials and settings are only for isolated local development. Never use the seeded demo accounts or local Compose configuration for a public or shared deployment. Before any external deployment, use managed secrets and properly secured identity, database, broker and network configuration.
 
 ## Watch the product demonstration
 
