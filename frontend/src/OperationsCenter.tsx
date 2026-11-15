@@ -26,8 +26,8 @@ export default function OperationsCenter({ overview, canEdit, busy, onRefresh, o
         <div><span>Consumer receipts</span><strong>{pipeline.ingested}</strong></div>
         <div><span>Dead letters awaiting review</span><strong>{overview.dead_letters}</strong></div>
       </div>
-      <p className="ops-note">{stale ? 'Warning: the oldest queued event is over 60 seconds old. ' : ''}
-        Oldest pending: {pipeline.oldest_pending_seconds === null ? "none" : `${pipeline.oldest_pending_seconds}s`}. Event totals are global across environments. Transport: {pipeline.transport}.
+      <p className="ops-note">{stale ? 'Warning: a queued event has exceeded the age alert threshold. ' : ''}
+        Queue age status: {pipeline.oldest_pending_seconds === null ? "no pending events" : stale ? "delayed" : "within alert threshold"}. Event totals are global across environments. Transport: {pipeline.transport}.
         Broker and worker health are not probed by this endpoint. Eventual delivery is not guaranteed solely by these counts.
       </p>
     </div>
