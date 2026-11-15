@@ -1,0 +1,40 @@
+name: Bounded load smoke
+on:
+  workflow_dispatch:
+  push:
+    branches: [main]
+    paths: ['backend/**', 'scripts/load_test.py', '.github/workflows/load.yml']
+  pull_request:
+    paths: ['backend/**', 'scripts/load_test.py', '.github/workflows/load.yml']
+permissions:
+  contents: read
+jobs:
+  load:
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+      - run: python -m pip install -r backend/requirements-dev.txt
+      - name: Start a disposable local evaluation API
+        shell: bash
+        run: |
+          APP_ENV=development AUTH_MODE=demo SEED_DEMO=true AUTO_CREATE_SCHEMA=true \
+            DATABASE_URL=sqlite:///./launchpilot_load.db PYTHONPATH=backend \
+            python -m uvicorn app.main:app --host 127.0.0.1 --port 8000 > /tmp/launchpilot-load-api.log 2>&1 &
+          for i in $(seq 1 40); do
+            if curl -fsS http://127.0.0.1:8000/api/health/ready >/dev/null; then exit 0; fi
+            sleep 1
+          done
+          cat /tmp/launchpilot-load-api.log
+          exit 1
+      - name: Concurrent flag evaluations with measured thresholds
+        run: |
+          python scripts/load_test.py --url http://127.0.0.1:8000 \
+            --flag ai_search --requests 100 --concurrency 8 --p95-ms 2000 \
+            --max-error-rate 0.01
+      - name: Print API diagnostics if thresholds fail
+        if: failure()
+        run: tail -100 /tmp/launchpilot-load-api.log

@@ -8,7 +8,8 @@ export type Audit = { id: string; flag_key: string; actor: string; action: strin
 export type Experiment = {flag_key: string; environment: string; method: string; control: {users: number; conversions: number; rate: number; ci95: number[]}; treatment: {users: number; conversions: number; rate: number; ci95: number[]}; p_value: number | null; absolute_lift: number | null; relative_lift: number | null; warnings: string[]}
 export type OperationsOverview = {
   environment: Environment
-  flags: { id: string; key: string; name: string; enabled: boolean; rollout: number; version: number }[]
+  flags: { id: string; key: string; name: string; enabled: boolean; rollout: number; version: number; targeting: {countries?: string[]; plans?: string[]; match?: 'all'|'any'}; guardrail_enabled: boolean }[]
+  dead_letters: number
   pipeline: {
     transport: string; pending: number; published: number; ingested: number
     oldest_pending_seconds: number | null; scope: 'global'; broker_health: 'not_measured'
@@ -28,6 +29,11 @@ export const api = {
   me: () => request<{subject: string; roles: string[]}>('/me'),
   experiment: (key: string, environment: Environment) => request<Experiment>(`/experiments/${encodeURIComponent(key)}?environment=${environment}`),
   operations: (environment: Environment) => request<OperationsOverview>(`/operations/overview?environment=${environment}`),
+  targeting: (id: string, version: number, rules: {countries: string[]; plans: string[]; match: 'all'|'any'}) =>
+    request<Flag>(`/operations/flags/${id}/targeting`, { method: 'PUT', body: JSON.stringify({version, rules}) }),
+  guardrail: (id: string, enabled: boolean) =>
+    request<{enabled:boolean}>(`/operations/flags/${id}/guardrail`, { method: 'PUT', body: JSON.stringify({enabled}) }),
+  deadLetters: () => request<{id:string;topic:string;partition:number;offset:number;reason:string;failed_at:string}[]>('/operations/dead-letters'),
   rollback: (id: string, version: number, reason: string) => request<Flag>(`/operations/flags/${id}/rollback`, { method: 'POST', body: JSON.stringify({ version, reason }) }),
   pipeline: () => request<{transport: string; pending: number; published: number; ingested: number}>('/events/pipeline'),
   flags: (environment: Environment) => request<Flag[]>(`/flags?environment=${environment}`),

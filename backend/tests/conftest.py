@@ -11,13 +11,13 @@ from fastapi.testclient import TestClient
 from sqlalchemy import delete
 from app.db import SessionLocal
 from app.main import app
-from app.models import AuditLog, Conversion, Exposure, Flag, EventOutbox, EventReceipt
+from app.models import AuditLog, Conversion, DeadLetterEvent, Exposure, FeatureHealthSample, Flag, GuardPolicy, EventOutbox, EventReceipt
 
 @pytest.fixture
 def client():
     with TestClient(app) as test_client:
         with SessionLocal() as session:
-            for model in (EventReceipt, EventOutbox, Conversion, Exposure, AuditLog, Flag):
+            for model in (DeadLetterEvent, FeatureHealthSample, GuardPolicy, EventReceipt, EventOutbox, Conversion, Exposure, AuditLog, Flag):
                 session.execute(delete(model))
             session.commit()
         yield test_client

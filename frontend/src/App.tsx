@@ -147,6 +147,41 @@ function App({ canEdit = true, authMode = 'demo', onLogout }: { canEdit?: boolea
       await refresh()
     } finally { setBusy(false) }
   }
+  const changeTargeting = async (flag: OperationsOverview['flags'][number]) => {
+    if (!canEdit) return
+    const countries = window.prompt('Allowed 2-letter countries (comma-separated; blank means any)', flag.targeting?.countries?.join(',') ?? '')
+    if (countries === null) return
+    const plans = window.prompt('Allowed plans (comma-separated; blank means any)', flag.targeting?.plans?.join(',') ?? '')
+    if (plans === null) return
+    setBusy(true)
+    try {
+      await api.targeting(flag.id, flag.version, {
+        countries: countries.split(',').map(v => v.trim()).filter(Boolean),
+        plans: plans.split(',').map(v => v.trim()).filter(Boolean),
+        match: 'all',
+      })
+      await refresh()
+      notify('Targeting rule saved with audit history')
+    } catch (err) {
+      notify(err instanceof Error ? err.message : 'Targeting failed', true)
+      await refresh()
+    } finally { setBusy(false) }
+  }
+  const changeGuardrail = async (flag: OperationsOverview['flags'][number]) => {
+    if (!canEdit) return
+    const next = !flag.guardrail_enabled
+    if (!window.confirm(next ?
+      'Enable automatic rollback for this flag? Requires trusted, authenticated feature health reports. Defaults: over 5% errors or p95 over 1000 ms in two consecutive 60-second windows with at least 20 reports each.' :
+      'Disable automatic SLO rollback for this flag?')) return
+    setBusy(true)
+    try {
+      await api.guardrail(flag.id, next)
+      await refresh()
+      notify(next ? 'SLO guardrail enabled' : 'SLO guardrail disabled')
+    } catch (err) {
+      notify(err instanceof Error ? err.message : 'SLO configuration failed', true)
+    } finally { setBusy(false) }
+  }
   const displayed = useMemo(() => flags.filter(f => `${f.name} ${f.key} ${f.owner}`.toLowerCase().includes(search.toLowerCase())), [flags, search])
   const maxExposure = Math.max(1, ...(metrics?.daily.map(x => x.evaluations) ?? [1]))
   const chartPoints = metrics?.daily.map(x => x.evaluations) ?? [0, 0, 0, 0, 0, 0, 0]
@@ -183,7 +218,7 @@ function App({ canEdit = true, authMode = 'demo', onLogout }: { canEdit?: boolea
         </>}
         {!loading && page === 'flags' && <><div className="summary-banner"><div className="banner-icon"><FlagIcon size={22}/></div><div><strong>{metrics?.active_flags ?? 0} active features</strong><span>Gradual rollouts use deterministic, SHA-256-based bucketing</span></div><span className="banner-trail">{metrics?.total_flags ?? 0} total <ArrowUpRight size={17}/></span></div><div className="panel flags-panel"><div className="panel-head"><div><h3>Release configuration</h3><p>Pause or adjust rollout percentages without redeploying</p></div><div className="search"><Search size={16}/><input placeholder="Search flags..." aria-label="Search flags" value={search} onChange={e => setSearch(e.target.value)}/></div></div><div className="flags-list">{displayed.map((f, i) => <FlagRow key={f.id} flag={f} idx={i} onSave={onSave} busy={busy || !canEdit}/>)}{displayed.length === 0 && <div className="empty">No matching flags. Try another search or create one.</div>}</div></div><div className="tip-strip"><ShieldCheck size={18}/><div><strong>Safe by design</strong><span>Version checks prevent stale writes. Every configuration update creates an audit event. RBAC is enforced by the API; flags are cached with bounded TTL.</span></div></div></>}
         {!loading && page === 'playground' && <div className="playground-grid"><section className="panel playground-panel"><div className="panel-head"><div><h3>Live evaluation</h3><p>Run the exact targeting function used by the API</p></div><div className="code-badge"><Code2 size={13}/> REST API</div></div><div className="form-grid"><label>Feature flag<select value={selected} onChange={e => setSelected(e.target.value)}>{flags.map(f => <option key={f.id} value={f.key}>{f.name}</option>)}</select></label><label>User identifier<input value={userId} maxLength={128} onChange={e => setUserId(e.target.value)} placeholder="user_123"/></label></div><div className="evaluation-context"><span><Radio size={13}/> {environment}</span><span><Gauge size={13}/> {selectedFlag?.rollout ?? 0}% rollout</span><span><ShieldCheck size={13}/> Stable assignment</span></div><button className="btn btn-primary eval-button" disabled={busy || !selected || !userId} onClick={() => void doEvaluate()}><Zap size={17}/> {busy ? 'Evaluating...' : 'Evaluate feature'} <ArrowRight size={16}/></button><div className="response-label"><span>DECISION RESPONSE</span><span>application/json</span></div><div className="response-box">{evaluation ? <><div className="response-status"><span className={evaluation.enabled ? 'result-on' : 'result-off'}>{evaluation.enabled ? <CheckCheck size={19}/> : <X size={19}/>} {evaluation.enabled ? 'FLAG ENABLED' : 'FLAG DISABLED'}</span><span>HTTP 200</span></div><pre>{JSON.stringify(evaluation, null, 2)}</pre></> : <div className="empty-response"><Cpu size={28}/><strong>Awaiting evaluation</strong><span>Choose a flag and user ID to see a deterministic decision.</span></div>}</div>{evaluation && <button className="btn btn-outline conversion-btn" disabled={busy} onClick={() => void doConvert()}><TrendingUp size={16}/> Record user conversion</button>}</section><section className="panel insight-panel"><div className="panel-head"><div><h3>Under the hood</h3><p>How one user gets a consistent decision</p></div></div><div className="engine-step"><div className="engine-index">01</div><div><strong>Hash identity with a secret salt</strong><p>SHA-256 combines flag salt, environment, flag key, and user ID.</p></div></div><div className="step-line"/><div className="engine-step"><div className="engine-index">02</div><div><strong>Assign a stable bucket</strong><p>Convert the digest into a deterministic number from 0 to 9,999.</p></div></div><div className="step-line"/><div className="engine-step"><div className="engine-index">03</div><div><strong>Apply rollout policy</strong><p>Serve the feature only if enabled and the bucket falls within the rollout.</p></div></div><div className="step-line"/><div className="engine-step"><div className="engine-index">04</div><div><strong>Log pseudonymous exposure</strong><p>Record the decision without storing the raw user identifier.</p></div></div><div className="example-code"><div><span className="code-light"/><span>Try with curl</span></div><pre>{`curl -X POST http://127.0.0.1:8000/api/evaluate \\\n  -H 'Content-Type: application/json' \\\n  -d '{"key":"${selected || 'ai_search'}",\n       "user_id":"user_42",\n       "environment":"${environment}"}'`}</pre></div></section></div>}
-        {!loading && page === 'operations' && <OperationsCenter overview={operations} canEdit={canEdit} busy={busy} onRefresh={() => void refresh()} onRollback={(flag) => void rollbackRelease(flag)} />}
+        {!loading && page === 'operations' && <OperationsCenter overview={operations} canEdit={canEdit} busy={busy} onRefresh={() => void refresh()} onRollback={(flag) => void rollbackRelease(flag)} onTargeting={(flag) => void changeTargeting(flag)} onGuardrail={(flag) => void changeGuardrail(flag)} />}
         {!loading && page === 'audit' && <section className="panel audit-panel"><div className="panel-head"><div><h3>Configuration change history</h3><p>An append-only record of feature-flag operations</p></div><span className="range-pill"><FileClock size={15}/> Latest {audits.length}</span></div><div className="audit-list">{audits.map((a, i) => <div className="audit-row" key={a.id}><div className={`audit-icon ${a.action === 'updated' ? 'audit-updated' : ''}`}>{a.action === 'updated' ? <Settings2 size={17}/> : a.action === 'seed' ? <Sparkles size={16}/> : <Plus size={17}/>}</div>{i !== audits.length - 1 && <span className="audit-connector"/>}<div className="audit-body"><div><strong>{a.flag_key}</strong><span className="audit-action">{a.action}</span></div><p><b>{a.actor}</b> {a.action === 'updated' ? 'updated feature configuration' : a.action === 'seed' ? 'initialized the demo flag' : 'created a new feature flag'}</p>{a.action === 'updated' && <div className="change-detail">{typeof a.before.rollout === 'number' && a.before.rollout !== a.after.rollout && <span>Rollout: {String(a.before.rollout)}% <ArrowRight size={11}/> {String(a.after.rollout)}%</span>}{a.before.enabled !== a.after.enabled && <span>Enabled: {String(a.before.enabled)} <ArrowRight size={11}/> {String(a.after.enabled)}</span>}</div>}</div><span className="audit-time">{timeAgo(a.created_at)}</span></div>)}{audits.length === 0 && <div className="empty">No audit entries yet.</div>}</div></section>}
         {!loading && page === 'experiments' && <section className="panel experiment-panel">
           <div className="panel-head"><div><h3>Experiment analysis</h3><p>Compare unique exposed users in control versus treatment</p></div><span className="code-badge">Two-proportion z-test</span></div>

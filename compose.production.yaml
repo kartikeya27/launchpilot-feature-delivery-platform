@@ -103,6 +103,17 @@ services:
       migrate: {condition: service_completed_successfully}
       kafka: {condition: service_started}
     restart: unless-stopped
+  # Polls opt-in SLO policies. All policies start disabled.
+  guardrail:
+    build: .
+    environment:
+      <<: *api-env
+      GUARDRAIL_WORKER_ENABLED: "true"
+      GUARDRAIL_POLL_SECONDS: "15"
+    command: ["python", "-m", "backend.app.guardrails"]
+    depends_on:
+      migrate: {condition: service_completed_successfully}
+    restart: unless-stopped
   otel-collector:
     image: otel/opentelemetry-collector-contrib:0.114.0
     command: ["--config=/etc/otelcol/config.yaml"]

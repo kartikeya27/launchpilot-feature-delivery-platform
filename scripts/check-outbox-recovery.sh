@@ -7,6 +7,7 @@ echo "Stopping Kafka to exercise transactional-outbox durability"
 "${COMPOSE[@]}" stop kafka
 
 EVENT_ID=$("${COMPOSE[@]}" exec -T api python - <<'PY'
+import hashlib
 import json
 from uuid import uuid4
 from sqlalchemy import select
@@ -20,7 +21,7 @@ with SessionLocal() as db:
     event_id = str(uuid4())
     payload = {
         "event_id": event_id, "type": "exposure", "flag_id": flag.id,
-        "user_hash": "synthetic-outage-event", "served": False,
+        "user_hash": hashlib.sha256(b"synthetic-outage-event").hexdigest(), "served": False,
     }
     db.add(EventOutbox(
         id=event_id, topic="launchpilot.events.v1",
