@@ -229,3 +229,24 @@ npx playwright test --headed --workers=1
 # Or use the interactive test explorer:
 npx playwright test --ui
 ```
+
+## Release Operations Center
+
+The **Operations** navigation page shows environment-scoped flag controls and globally scoped PostgreSQL outbox status. It reports pending/published events, ingested receipts, and the age of the oldest pending event. These database metrics **do not assert Kafka broker health**. The administrator-only **Rollback** action sets a flag to disabled and 0% rollout using an atomic version check, invalidates Redis, and writes an audit record with an operator reason. Viewer accounts have read-only status access.
+
+For the full local stack, choose **staging**, create a canary flag, enable a small rollout, evaluate a synthetic user in **Evaluation lab**, and review **Operations** and **Audit trail**. Rollback is manual; the repository does not yet include automatic SLO-triggered rollback, a Kafka dead-letter queue, or deployment approval workflows.
+
+### Real multi-service integration workflow
+
+The separate [Full-stack release operations](../../actions/workflows/fullstack.yml) workflow uses Docker Compose to launch PostgreSQL, Redis, Kafka, Keycloak, and the API/publisher/consumer. It validates real Keycloak admin/viewer browser sign-in, flag creation and evaluation, role-gated rollback, audit history, and synthetic Kafka outage/recovery through a PostgreSQL outbox. CI uploads a 7-day `fullstack-browser-evidence` artifact with HTML report, screenshots, videos, and traces. The isolated CI workflow uses disposable credentials and volumes; **do not run its cleanup command against persistent local data**.
+
+To run those browser checks locally against a *running* full-stack Compose environment:
+
+```bash
+cd frontend
+npm install
+npx playwright install chromium
+npx playwright test --config=playwright.fullstack.config.ts --headed --workers=1
+```
+
+The Compose workflow and cloud Terraform blueprint are distinct. The latter remains a deployment reference, not a validated public-cloud service.

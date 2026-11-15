@@ -6,6 +6,14 @@ export type Daily = { date: string; evaluations: number; conversions: number }
 export type Metrics = { total_flags: number; active_flags: number; evaluations: number; unique_users: number; conversions: number; conversion_rate: number; daily: Daily[]; flags: { id: string; key: string; evaluations: number; conversions: number }[] }
 export type Audit = { id: string; flag_key: string; actor: string; action: string; before: Record<string, unknown>; after: Record<string, unknown>; created_at: string }
 export type Experiment = {flag_key: string; environment: string; method: string; control: {users: number; conversions: number; rate: number; ci95: number[]}; treatment: {users: number; conversions: number; rate: number; ci95: number[]}; p_value: number | null; absolute_lift: number | null; relative_lift: number | null; warnings: string[]}
+export type OperationsOverview = {
+  environment: Environment
+  flags: { id: string; key: string; name: string; enabled: boolean; rollout: number; version: number }[]
+  pipeline: {
+    transport: string; pending: number; published: number; ingested: number
+    oldest_pending_seconds: number | null; scope: 'global'; broker_health: 'not_measured'
+  }
+}
 export type Evaluation = { key: string; enabled: boolean; reason: string; bucket: number; rollout: number; flag_version: number; environment: string }
 
 async function request<T>(path: string, options?: RequestInit): Promise<T> {
@@ -19,6 +27,8 @@ async function request<T>(path: string, options?: RequestInit): Promise<T> {
 export const api = {
   me: () => request<{subject: string; roles: string[]}>('/me'),
   experiment: (key: string, environment: Environment) => request<Experiment>(`/experiments/${encodeURIComponent(key)}?environment=${environment}`),
+  operations: (environment: Environment) => request<OperationsOverview>(`/operations/overview?environment=${environment}`),
+  rollback: (id: string, version: number, reason: string) => request<Flag>(`/operations/flags/${id}/rollback`, { method: 'POST', body: JSON.stringify({ version, reason }) }),
   pipeline: () => request<{transport: string; pending: number; published: number; ingested: number}>('/events/pipeline'),
   flags: (environment: Environment) => request<Flag[]>(`/flags?environment=${environment}`),
   metrics: (environment: Environment) => request<Metrics>(`/analytics?environment=${environment}`),

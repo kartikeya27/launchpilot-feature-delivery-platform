@@ -1,0 +1,77 @@
+name: Full-stack release operations
+
+on:
+  workflow_dispatch:
+  push:
+    branches: [main]
+    paths:
+      - 'backend/**'
+      - 'frontend/**'
+      - 'compose.production.yaml'
+      - 'Dockerfile'
+      - 'scripts/check-outbox-recovery.sh'
+      - '.github/workflows/fullstack.yml'
+  pull_request:
+    paths:
+      - 'backend/**'
+      - 'frontend/**'
+      - 'compose.production.yaml'
+      - 'Dockerfile'
+      - 'scripts/check-outbox-recovery.sh'
+      - '.github/workflows/fullstack.yml'
+
+permissions:
+  contents: read
+
+jobs:
+  fullstack:
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+      - name: Start PostgreSQL, Redis, Kafka, Keycloak, API and workers
+        run: docker compose -f compose.production.yaml up -d --build api publisher consumer otel-collector
+      - name: Wait for real API and Keycloak readiness
+        shell: bash
+        run: |
+          for i in $(seq 1 120); do
+            if curl -fsS http://localhost:8000/api/health/ready >/dev/null &&                curl -fsS http://localhost:8081/realms/launchpilot/.well-known/openid-configuration >/dev/null; then
+              echo "Keycloak + PostgreSQL-backed API ready"
+              exit 0
+            fi
+            sleep 3
+          done
+          docker compose -f compose.production.yaml ps
+          docker compose -f compose.production.yaml logs --tail=100 api keycloak migrate
+          exit 1
+      - name: Install frontend and browser test dependencies
+        working-directory: frontend
+        run: |
+          npm install --no-audit --no-fund
+          npx playwright install --with-deps chromium
+      - name: Browser workflow — real OIDC, rollout, evaluation and rollback
+        working-directory: frontend
+        env:
+          CI: 'true'
+        run: npx playwright test --config=playwright.fullstack.config.ts
+      - name: Kafka outage and outbox recovery exercise
+        run: bash scripts/check-outbox-recovery.sh
+      - name: Upload browser screenshots, video, traces and HTML report
+        uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: fullstack-browser-evidence
+          path: |
+            frontend/playwright-report/
+            frontend/test-results/
+          retention-days: 7
+          if-no-files-found: warn
+      - name: Print infrastructure diagnostics on failure
+        if: failure()
+        run: docker compose -f compose.production.yaml logs --tail=150 api keycloak postgres kafka publisher consumer
+      - name: Clean up ephemeral CI stack
+        if: always()
+        run: docker compose -f compose.production.yaml down -v --remove-orphans
