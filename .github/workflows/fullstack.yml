@@ -10,6 +10,7 @@ on:
       - 'compose.production.yaml'
       - 'Dockerfile'
       - 'scripts/check-outbox-recovery.sh'
+      - 'scripts/check-dlq-recovery.sh'
       - '.github/workflows/fullstack.yml'
   pull_request:
     paths:
@@ -33,7 +34,7 @@ jobs:
         with:
           node-version: '22'
       - name: Start PostgreSQL, Redis, Kafka, Keycloak, API and workers
-        run: docker compose -f compose.production.yaml up -d --build api publisher consumer otel-collector
+        run: docker compose -f compose.production.yaml up -d --build api publisher consumer guardrail otel-collector
       - name: Wait for real API and Keycloak readiness
         shell: bash
         run: |
