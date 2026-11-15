@@ -33,7 +33,7 @@ jobs:
         with:
           node-version: '22'
       - name: Start PostgreSQL, Redis, Kafka, Keycloak, API and workers
-        run: docker compose -f compose.production.yaml up -d --build api publisher consumer
+        run: docker compose -f compose.production.yaml up -d --build api publisher consumer otel-collector
       - name: Wait for real API and Keycloak readiness
         shell: bash
         run: |
