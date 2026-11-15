@@ -16,6 +16,7 @@ class CachedFlag:
     enabled: bool
     rollout: int
     version: int
+    targeting_json: str = '{}'
 
 @lru_cache(maxsize=1)
 def client():
@@ -43,7 +44,7 @@ def set_cached_flag(flag) -> None:
     r = client()
     if r is None:
         return
-    fields = ("id", "key", "salt", "environment", "enabled", "rollout", "version")
+    fields = ("id", "key", "salt", "environment", "enabled", "rollout", "version", "targeting_json")
     try:
         r.setex(cache_key(flag.key, flag.environment), int(os.getenv("CACHE_TTL_SECONDS", "15")), json.dumps({x: getattr(flag, x) for x in fields}))
     except Exception as exc:
