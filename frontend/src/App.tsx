@@ -171,7 +171,7 @@ function App({ canEdit = true, authMode = 'demo', onLogout }: { canEdit?: boolea
     if (!canEdit) return
     const next = !flag.guardrail_enabled
     if (!window.confirm(next ?
-      'Enable automatic rollback for this flag? Requires trusted, authenticated feature health reports. Defaults: over 5% errors or p95 over 1000 ms in two consecutive 60-second windows with at least 20 reports each.' :
+      'Enable automatic rollback for this flag? Requires trusted, authenticated feature health reports. The policy evaluates sustained error or latency threshold breaches using sufficiently sampled monitoring windows.' :
       'Disable automatic SLO rollback for this flag?')) return
     setBusy(true)
     try {
