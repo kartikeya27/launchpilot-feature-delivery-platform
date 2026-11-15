@@ -10,7 +10,7 @@ async function login(page: Page, username: string, password: string) {
   await expect(page.getByRole('heading', { name: /Good morning, developer/i })).toBeVisible()
 }
 
-test('real Keycloak admin: create, rollout, evaluate, Kafka outbox, rollback, audit', async ({ page, request }) => {
+test('real Keycloak admin: create, rollout, evaluate, Kafka outbox, rollback, audit', async ({ page }) => {
   await login(page, 'demo-admin', 'AdminDemo123!')
   await page.getByLabel('Environment').selectOption('staging')
 
@@ -21,7 +21,7 @@ test('real Keycloak admin: create, rollout, evaluate, Kafka outbox, rollback, au
   await dialog.getByLabel('Flag key').fill(key)
   await dialog.getByRole('button', { name: 'Create flag' }).click()
 
-  await page.getByRole('button', { name: 'Feature flags' }).click()
+  await page.getByRole('button', { name: /^Feature flags/ }).click()
   const row = page.locator('.flag-row').filter({ hasText: key })
   await expect(row).toBeVisible()
   const slider = row.getByRole('slider')
