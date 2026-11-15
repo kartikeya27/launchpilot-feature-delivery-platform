@@ -1,7 +1,7 @@
 import { expect, test, type Page } from '@playwright/test'
 
 /**
- * Public portfolio demo recorded on the disposable local Compose stack.
+ * Public product demo recorded on the disposable local Compose stack.
  * All identities, flags and events are synthetic, and the recording never
  * demonstrates a real automatic SLO breach or cloud deployment.
  */
@@ -37,12 +37,12 @@ test('record a verified checkout rollout and manual recovery walkthrough', async
 
   await scene(page, '01 / 06  •  Keycloak OIDC login and admin-only release controls', 2200)
   await page.getByLabel('Environment').selectOption('staging')
-  const key = `portfolio_checkout_${Date.now().toString(36)}`
+  const key = `demo_checkout_${Date.now().toString(36)}`
 
   await scene(page, '02 / 06  •  Create a staging-only checkout feature flag')
   await page.getByRole('button', { name: 'New flag' }).click()
   const dialog = page.getByRole('dialog', { name: 'Create feature flag' })
-  await dialog.getByLabel('Display name').fill('Checkout Canary — Portfolio Demo')
+  await dialog.getByLabel('Display name').fill('Checkout Canary — Product Demo')
   await dialog.getByLabel('Flag key').fill(key)
   await dialog.getByRole('button', { name: 'Create flag' }).click()
   await page.getByRole('button', { name: /^Feature flags/ }).click()
@@ -69,7 +69,7 @@ test('record a verified checkout rollout and manual recovery walkthrough', async
   await scene(page, '04 / 06  •  SHA-256 user evaluation and synthetic conversion', 1900)
   await page.getByRole('button', { name: 'Evaluation lab' }).first().click()
   await page.locator('.playground-panel select').selectOption(key)
-  await page.getByLabel('User identifier').fill('synthetic-portfolio-user-42')
+  await page.getByLabel('User identifier').fill('synthetic-demo-user-42')
   await page.getByRole('button', { name: 'Evaluate feature' }).click()
   await expect(page.getByText('FLAG ENABLED')).toBeVisible()
   await page.waitForTimeout(1100)

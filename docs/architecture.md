@@ -138,7 +138,7 @@ Prometheus and OpenTelemetry provide independent service telemetry. The Operatio
 
 The [recorded browser walkthrough](demo.md) is a short **UI demonstration** of the release workflow. It is not a video of an SLO breach or infrastructure recovery; those remain independently testable behaviors.
 
-## 6. Failure cases to discuss in interviews
+## 6. Failure scenarios and system responses
 
 | Failure | Design response / limitation |
 | --- | --- |
@@ -150,6 +150,6 @@ The [recorded browser walkthrough](demo.md) is a short **UI demonstration** of t
 | Insufficient or sporadic health samples | Guardrail does **not** auto-rollback. |
 | True production outage | Not established: local tests and Terraform validation are not cloud operational proof. |
 
-## 7. Interview-friendly architecture pitch (45–60 seconds)
+## 7. Technical architecture overview (45–60 seconds)
 
 > LaunchPilot models progressive feature delivery across a React/TypeScript control plane and a FastAPI service. An administrator authenticates with Keycloak and configures versioned feature flags. Each evaluation applies contextual targeting and deterministic SHA-256 bucketing; tracked decisions persist an exposure and outbox event transactionally in PostgreSQL. A worker publishes to Kafka, and an idempotent consumer writes receipts or quarantines malformed messages. Redis caches configuration with invalidation, while OpenTelemetry and Prometheus provide service observability. The Operations Center supports audited manual rollback, plus an optional guardrail that disables a flag after consecutive completed error/latency windows. The architecture is validated through real local Compose and Playwright tests; it isn't presented as a public production deployment.

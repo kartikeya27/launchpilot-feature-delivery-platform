@@ -1,4 +1,4 @@
-name: Portfolio demo - browser recording
+name: Product demo - browser recording
 
 on:
   workflow_dispatch:
@@ -6,17 +6,17 @@ on:
     paths:
       - 'README.md'
       - 'docs/**'
-      - 'frontend/portfolio/**'
-      - 'frontend/playwright.portfolio.config.ts'
-      - '.github/workflows/portfolio-demo.yml'
+      - 'frontend/demo/**'
+      - 'frontend/playwright.demo.config.ts'
+      - '.github/workflows/product-demo.yml'
   push:
     branches: [main]
     paths:
       - 'README.md'
       - 'docs/**'
-      - 'frontend/portfolio/**'
-      - 'frontend/playwright.portfolio.config.ts'
-      - '.github/workflows/portfolio-demo.yml'
+      - 'frontend/demo/**'
+      - 'frontend/playwright.demo.config.ts'
+      - '.github/workflows/product-demo.yml'
 
 permissions:
   contents: read
@@ -54,7 +54,7 @@ jobs:
         working-directory: frontend
         env:
           CI: 'true'
-        run: npx playwright test --config=playwright.portfolio.config.ts
+        run: npx playwright test --config=playwright.demo.config.ts
       - name: Copy recording with a friendly file name
         if: always()
         shell: bash
@@ -62,7 +62,7 @@ jobs:
           mkdir -p demo-output
           VIDEO=$(find frontend/test-results -type f -name 'video.webm' -print -quit || true)
           if [[ -n "$VIDEO" ]]; then
-            cp "$VIDEO" demo-output/launchpilot-portfolio-demo.webm
+            cp "$VIDEO" demo-output/launchpilot-product-demo.webm
           else
             echo "No Playwright video found; investigate browser test failure."
             exit 1
@@ -72,14 +72,14 @@ jobs:
         uses: actions/upload-artifact@v4
         with:
           name: launchpilot-demo-video
-          path: demo-output/launchpilot-portfolio-demo.webm
+          path: demo-output/launchpilot-product-demo.webm
           if-no-files-found: error
           retention-days: 7
       - name: Upload HTML report, screenshots and trace
         if: always()
         uses: actions/upload-artifact@v4
         with:
-          name: portfolio-demo-evidence
+          name: product-demo-evidence
           path: |
             frontend/playwright-report/
             frontend/test-results/

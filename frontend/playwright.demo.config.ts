@@ -1,8 +1,8 @@
 import { defineConfig, devices } from '@playwright/test'
 
-/** Record a synthetic staging-only portfolio demo against the real local Compose stack. */
+/** Record a synthetic staging-only product demo against the real local Compose stack. */
 export default defineConfig({
-  testDir: './portfolio',
+  testDir: './demo',
   timeout: 120_000,
   expect: { timeout: 25_000 },
   workers: 1,
