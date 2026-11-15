@@ -5,9 +5,9 @@
 
 LaunchPilot is a working **React + FastAPI** release-control application demonstrating progressive feature delivery and operational reliability. Operators create feature flags, target audiences, evaluate deterministic rollouts, examine exposure/conversion activity, inspect a transactional event pipeline, and use manual or *opt-in* SLO-triggered rollback.
 
-The application runs in two modes: a quick **SQLite + demo-auth** development mode and a **Docker Compose integration environment** using real Keycloak, PostgreSQL, Redis, and Kafka. It is a **portfolio/reference platform**, not an internet-hardened, publicly deployed SaaS.
+The application runs in two modes: a quick **SQLite + demo-auth** development mode and a **Docker Compose integration environment** using real Keycloak, PostgreSQL, Redis, and Kafka. It is a **reference implementation**, not an internet-hardened, publicly deployed SaaS.
 
-[Architecture deep dive](docs/architecture.md) · [2-minute demonstration guide](docs/demo.md) · [Record the browser walkthrough](.github/workflows/portfolio-demo.yml) · [GitHub Actions](https://github.com/kartikeya27/launchpilot-feature-delivery-platform/actions)
+[Architecture deep dive](docs/architecture.md) · [2-minute demonstration guide](docs/demo.md) · [Record the browser walkthrough](.github/workflows/product-demo.yml) · [GitHub Actions](https://github.com/kartikeya27/launchpilot-feature-delivery-platform/actions)
 
 [![CI](https://github.com/kartikeya27/launchpilot-feature-delivery-platform/actions/workflows/ci.yml/badge.svg)](https://github.com/kartikeya27/launchpilot-feature-delivery-platform/actions/workflows/ci.yml)
 [![Full-stack](https://github.com/kartikeya27/launchpilot-feature-delivery-platform/actions/workflows/fullstack.yml/badge.svg)](https://github.com/kartikeya27/launchpilot-feature-delivery-platform/actions/workflows/fullstack.yml)
@@ -100,11 +100,11 @@ docker compose -f compose.production.yaml down
 
 A dedicated Playwright scenario captures a **real browser video**, screenshots, and trace evidence using synthetic staging data and the local Keycloak-backed environment. It covers login → flag creation → progressive rollout → user evaluation → event counters → manual rollback → audit.
 
-**[Open the portfolio demo workflow](https://github.com/kartikeya27/launchpilot-feature-delivery-platform/actions/workflows/portfolio-demo.yml)** → open a successful run → **Artifacts** → download `launchpilot-demo-video` (WebM recording). The workflow also uploads `portfolio-demo-evidence` with an HTML report and trace. Artifacts are retained for seven days, so download the video if you want a permanent copy. A later public video URL can be added here after the recording is reviewed and published.
+**[Open the product demonstration workflow](https://github.com/kartikeya27/launchpilot-feature-delivery-platform/actions/workflows/portfolio-demo.yml)** → open a successful run → **Artifacts** → download `launchpilot-demo-video` (WebM recording). The workflow also uploads `product-demo-evidence` with an HTML report and trace. Artifacts are retained for seven days, so download the video if you want a permanent copy. A later public video URL can be added here after the recording is reviewed and published.
 
 The video demonstrates **manual rollback**, not an automatically triggered guardrail. Its infrastructure explanation comes from tested components and [docs/architecture.md](docs/architecture.md); the short recording does not itself prove a live SLO breach or disaster-recovery event.
 
-Use [docs/demo.md](docs/demo.md) for the 90–120 second voiceover, recorded scenes, and an optional presenter-led walkthrough.
+Use [docs/demo.md](docs/demo.md) for the 90–120 second narration, recorded scenes, and an optional guided walkthrough.
 
 ## Quality gates
 
@@ -115,7 +115,7 @@ Use [docs/demo.md](docs/demo.md) for the 90–120 second voiceover, recorded sce
 | [Bounded load smoke](.github/workflows/load.yml) | Small localhost concurrent evaluation benchmark with explicit error/latency limits |
 | [Security scans](.github/workflows/security.yml) | CodeQL, Bandit, dependency checks, and Trivy with separate full and fixable-vulnerability reports |
 | [Terraform blueprint validation](.github/workflows/terraform-validate.yml) | Static Terraform init/validation; **does not provision cloud resources** |
-| [Portfolio demo](.github/workflows/portfolio-demo.yml) | Recorded, repeatable **real-browser** checkout-flag walkthrough |
+| [Product demo](.github/workflows/product-demo.yml) | Recorded, repeatable **real-browser** checkout-flag walkthrough |
 
 Run real local browser tests against a running Docker stack:
 
@@ -153,10 +153,10 @@ backend/integration/   Real PostgreSQL integration tests
 frontend/src/          React dashboard and Operations Center
 frontend/e2e/          Lightweight Playwright / accessibility tests
 frontend/fullstack/    Keycloak-backed browser workflow
-frontend/portfolio/    Recorded portfolio walkthrough
+frontend/demo/         Recorded product walkthrough
 infra/                  Keycloak, telemetry, Terraform blueprint
 scripts/               Local startup, recovery exercises, bounded load checks
-docs/                  Architecture explanation and demo presenter guide
+docs/                  Architecture explanation and demo narration guide
 .github/workflows/     CI, full-stack, security, Terraform, load, recorded demo
 ```
 
