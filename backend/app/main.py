@@ -25,6 +25,7 @@ from .db import Base, SessionLocal, engine, get_db
 from .models import AuditLog, Conversion, Exposure, Flag, EventOutbox, EventReceipt
 from .schemas import ConversionRequest, EvalRequest, EvalResponse, FlagCreate, FlagOut, FlagUpdate
 from .seed import seed_if_empty
+from .operations import router as operations_router
 
 @asynccontextmanager
 async def lifespan(_app: FastAPI):
@@ -43,7 +44,6 @@ app = FastAPI(title="LaunchPilot API", version="1.0.0", description="Progressive
 app.add_middleware(CORSMiddleware, allow_origins=os.getenv("CORS_ORIGINS", "http://localhost:5173,http://127.0.0.1:5173").split(","), allow_methods=["GET", "POST", "PUT"], allow_headers=["Content-Type", "Authorization"])
 app.middleware("http")(metrics_middleware)
 instrument(app)
-from .operations import router as operations_router
 app.include_router(operations_router)
 
 def snapshot(flag: Flag):
