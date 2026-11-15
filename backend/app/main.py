@@ -135,7 +135,7 @@ def evaluate_flag(payload: EvalRequest, db: Session = Depends(get_db), user: Pri
         CACHE.labels("miss").inc()
         flag = get_flag(db, payload.key, payload.environment)
         set_cached_flag(flag)
-    served, reason, bucket = evaluate(flag, payload.user_id)
+    served, reason, bucket = evaluate(flag, payload.user_id, payload.country, payload.plan)
     if payload.track:
         # FK-valid row required for tracking; cached config is read-only and short-lived.
         flag_row = get_flag(db, payload.key, payload.environment)
