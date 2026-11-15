@@ -1,14 +1,16 @@
 import { useCallback, useEffect, useMemo, useState, type FormEvent } from 'react'
 import { Activity, ArrowDownRight, ArrowRight, ArrowUpRight, Check, CheckCheck, ChevronDown, CircleHelp, Code2, Cpu, ExternalLink, FileClock, Flag as FlagIcon, FlaskConical, Gauge, GitBranch, Layers3, LockKeyhole, Menu, MoreHorizontal, Plus, Radio, RefreshCw, Rocket, Search, Settings2, ShieldCheck, Sparkles, TrendingUp, Users, X, Zap } from 'lucide-react'
-import { api, type Audit, type Environment, type Evaluation, type Experiment, type Flag, type Metrics } from './api'
+import { api, type Audit, type Environment, type Evaluation, type Experiment, type Flag, type Metrics, type OperationsOverview } from './api'
+import OperationsCenter from './OperationsCenter'
 
-type Page = 'overview' | 'flags' | 'playground' | 'audit' | 'experiments'
+type Page = 'overview' | 'flags' | 'playground' | 'audit' | 'experiments' | 'operations'
 const nav: { page: Page; title: string; icon: typeof Activity }[] = [
   { page: 'overview', title: 'Overview', icon: Gauge },
   { page: 'flags', title: 'Feature flags', icon: FlagIcon },
   { page: 'playground', title: 'Evaluation lab', icon: FlaskConical },
   { page: 'audit', title: 'Audit trail', icon: FileClock },
   { page: 'experiments', title: 'Experiments', icon: TrendingUp },
+  { page: 'operations', title: 'Operations', icon: Activity },
 ]
 const labelDate = (iso: string) => new Date(`${iso}T12:00:00`).toLocaleDateString('en-US', { weekday: 'short' })
 const timeAgo = (iso: string) => {
@@ -69,6 +71,7 @@ function App({ canEdit = true, authMode = 'demo', onLogout }: { canEdit?: boolea
   const [flags, setFlags] = useState<Flag[]>([])
   const [metrics, setMetrics] = useState<Metrics | null>(null)
   const [audits, setAudits] = useState<Audit[]>([])
+  const [operations, setOperations] = useState<OperationsOverview | null>(null)
   const [loading, setLoading] = useState(true)
   const [online, setOnline] = useState(false)
   const [busy, setBusy] = useState(false)
@@ -85,8 +88,8 @@ function App({ canEdit = true, authMode = 'demo', onLogout }: { canEdit?: boolea
   const notify = useCallback((text: string, error = false) => setNotice({ text, error }), [])
   const refresh = useCallback(async () => {
     try {
-      const [f, m, a] = await Promise.all([api.flags(environment), api.metrics(environment), api.audit()])
-      setFlags(f); setMetrics(m); setAudits(a); setOnline(true)
+      const [f, m, a, o] = await Promise.all([api.flags(environment), api.metrics(environment), api.audit(), api.operations(environment)])
+      setFlags(f); setMetrics(m); setAudits(a); setOperations(o); setOnline(true)
       setSelected(prev => f.some(x => x.key === prev) ? prev : (f[0]?.key ?? ''))
     } catch (err) { setOnline(false); notify(err instanceof Error ? err.message : 'Unable to reach the API', true) }
     finally { setLoading(false) }
@@ -132,6 +135,18 @@ function App({ canEdit = true, authMode = 'demo', onLogout }: { canEdit?: boolea
     catch (err) { notify(err instanceof Error ? err.message : 'Conversion failed', true) }
     finally { setBusy(false) }
   }
+  const rollbackRelease = async (flag: OperationsOverview['flags'][number]) => {
+    if (!canEdit || !window.confirm(`Rollback ${flag.key} in ${environment}? The feature will be disabled at 0% rollout.`)) return
+    setBusy(true)
+    try {
+      await api.rollback(flag.id, flag.version, 'Operator-initiated emergency rollback')
+      await refresh()
+      notify(`${flag.name} rolled back and audit-logged`)
+    } catch (err) {
+      notify(err instanceof Error ? err.message : 'Rollback failed', true)
+      await refresh()
+    } finally { setBusy(false) }
+  }
   const displayed = useMemo(() => flags.filter(f => `${f.name} ${f.key} ${f.owner}`.toLowerCase().includes(search.toLowerCase())), [flags, search])
   const maxExposure = Math.max(1, ...(metrics?.daily.map(x => x.evaluations) ?? [1]))
   const chartPoints = metrics?.daily.map(x => x.evaluations) ?? [0, 0, 0, 0, 0, 0, 0]
@@ -155,7 +170,7 @@ function App({ canEdit = true, authMode = 'demo', onLogout }: { canEdit?: boolea
     <div className="main-area">
       <header className="topbar"><div className="crumb"><button className="mobile-menu" aria-label="Open navigation" onClick={() => setMenuOpen(!menuOpen)}><Menu size={20}/></button><span>Workspace</span><span className="slash">/</span><strong>{activePage}</strong></div><div className="top-actions"><div className="live-status"><span className="online-dot" style={!online ? {background: '#f19e76', boxShadow: 'none'} : undefined}/>{online ? ' API connected' : ' API unavailable'}</div><div className="top-divider"/>{onLogout && <button className="btn btn-outline" type="button" onClick={onLogout}>Sign out</button>}<div className="avatar">{canEdit ? "AD" : "VI"}</div></div></header>
       <main>
-        <div className="page-head"><div><div className="eyebrow"><span className="eyebrow-line"/> RELEASE INTELLIGENCE PLATFORM</div><h1>{page === 'overview' ? 'Good morning, developer' : activePage}<span className="heading-dot">.</span></h1><p>{page === 'overview' ? 'Ship faster, measure everything, and keep every release under control.' : page === 'flags' ? 'Manage releases with consistent targeting and real-time rollout control.' : page === 'playground' ? 'Explore the deterministic evaluation engine with real user identifiers.' : page === 'experiments' ? 'Statistical comparisons of exposed control and treatment cohorts.' : 'Every flag change has an accountable, append-only history.'}</p></div><div className="head-buttons"><label className="env-wrap"><Radio size={14}/><select aria-label="Environment" value={environment} onChange={e => setEnvironment(e.target.value as Environment)}><option value="production">Production</option><option value="staging">Staging</option><option value="development">Development</option></select><ChevronDown size={14}/></label><button className="btn btn-outline btn-icon" aria-label="Refresh data" disabled={busy} onClick={() => void refresh()}><RefreshCw size={16}/></button>{canEdit && page !== 'audit' && page !== 'experiments' && <button className="btn btn-primary" onClick={() => setShowNew(true)}><Plus size={17}/> New flag</button>}</div></div>
+        <div className="page-head"><div><div className="eyebrow"><span className="eyebrow-line"/> RELEASE INTELLIGENCE PLATFORM</div><h1>{page === 'overview' ? 'Good morning, developer' : activePage}<span className="heading-dot">.</span></h1><p>{page === 'overview' ? 'Ship faster, measure everything, and keep every release under control.' : page === 'flags' ? 'Manage releases with consistent targeting and real-time rollout control.' : page === 'playground' ? 'Explore the deterministic evaluation engine with real user identifiers.' : page === 'experiments' ? 'Statistical comparisons of exposed control and treatment cohorts.' : page === 'operations' ? 'Investigate event delivery and pause unhealthy releases.' : 'Every flag change has an accountable, append-only history.'}</p></div><div className="head-buttons"><label className="env-wrap"><Radio size={14}/><select aria-label="Environment" value={environment} onChange={e => setEnvironment(e.target.value as Environment)}><option value="production">Production</option><option value="staging">Staging</option><option value="development">Development</option></select><ChevronDown size={14}/></label><button className="btn btn-outline btn-icon" aria-label="Refresh data" disabled={busy} onClick={() => void refresh()}><RefreshCw size={16}/></button>{canEdit && page !== 'audit' && page !== 'experiments' && <button className="btn btn-primary" onClick={() => setShowNew(true)}><Plus size={17}/> New flag</button>}</div></div>
 
         {loading && <div className="loading"><RefreshCw size={22} className="spin"/> Connecting to LaunchPilot API...</div>}
         {!loading && page === 'overview' && <>
@@ -168,6 +183,7 @@ function App({ canEdit = true, authMode = 'demo', onLogout }: { canEdit?: boolea
         </>}
         {!loading && page === 'flags' && <><div className="summary-banner"><div className="banner-icon"><FlagIcon size={22}/></div><div><strong>{metrics?.active_flags ?? 0} active features</strong><span>Gradual rollouts use deterministic, SHA-256-based bucketing</span></div><span className="banner-trail">{metrics?.total_flags ?? 0} total <ArrowUpRight size={17}/></span></div><div className="panel flags-panel"><div className="panel-head"><div><h3>Release configuration</h3><p>Pause or adjust rollout percentages without redeploying</p></div><div className="search"><Search size={16}/><input placeholder="Search flags..." aria-label="Search flags" value={search} onChange={e => setSearch(e.target.value)}/></div></div><div className="flags-list">{displayed.map((f, i) => <FlagRow key={f.id} flag={f} idx={i} onSave={onSave} busy={busy || !canEdit}/>)}{displayed.length === 0 && <div className="empty">No matching flags. Try another search or create one.</div>}</div></div><div className="tip-strip"><ShieldCheck size={18}/><div><strong>Safe by design</strong><span>Version checks prevent stale writes. Every configuration update creates an audit event. RBAC is enforced by the API; flags are cached with bounded TTL.</span></div></div></>}
         {!loading && page === 'playground' && <div className="playground-grid"><section className="panel playground-panel"><div className="panel-head"><div><h3>Live evaluation</h3><p>Run the exact targeting function used by the API</p></div><div className="code-badge"><Code2 size={13}/> REST API</div></div><div className="form-grid"><label>Feature flag<select value={selected} onChange={e => setSelected(e.target.value)}>{flags.map(f => <option key={f.id} value={f.key}>{f.name}</option>)}</select></label><label>User identifier<input value={userId} maxLength={128} onChange={e => setUserId(e.target.value)} placeholder="user_123"/></label></div><div className="evaluation-context"><span><Radio size={13}/> {environment}</span><span><Gauge size={13}/> {selectedFlag?.rollout ?? 0}% rollout</span><span><ShieldCheck size={13}/> Stable assignment</span></div><button className="btn btn-primary eval-button" disabled={busy || !selected || !userId} onClick={() => void doEvaluate()}><Zap size={17}/> {busy ? 'Evaluating...' : 'Evaluate feature'} <ArrowRight size={16}/></button><div className="response-label"><span>DECISION RESPONSE</span><span>application/json</span></div><div className="response-box">{evaluation ? <><div className="response-status"><span className={evaluation.enabled ? 'result-on' : 'result-off'}>{evaluation.enabled ? <CheckCheck size={19}/> : <X size={19}/>} {evaluation.enabled ? 'FLAG ENABLED' : 'FLAG DISABLED'}</span><span>HTTP 200</span></div><pre>{JSON.stringify(evaluation, null, 2)}</pre></> : <div className="empty-response"><Cpu size={28}/><strong>Awaiting evaluation</strong><span>Choose a flag and user ID to see a deterministic decision.</span></div>}</div>{evaluation && <button className="btn btn-outline conversion-btn" disabled={busy} onClick={() => void doConvert()}><TrendingUp size={16}/> Record user conversion</button>}</section><section className="panel insight-panel"><div className="panel-head"><div><h3>Under the hood</h3><p>How one user gets a consistent decision</p></div></div><div className="engine-step"><div className="engine-index">01</div><div><strong>Hash identity with a secret salt</strong><p>SHA-256 combines flag salt, environment, flag key, and user ID.</p></div></div><div className="step-line"/><div className="engine-step"><div className="engine-index">02</div><div><strong>Assign a stable bucket</strong><p>Convert the digest into a deterministic number from 0 to 9,999.</p></div></div><div className="step-line"/><div className="engine-step"><div className="engine-index">03</div><div><strong>Apply rollout policy</strong><p>Serve the feature only if enabled and the bucket falls within the rollout.</p></div></div><div className="step-line"/><div className="engine-step"><div className="engine-index">04</div><div><strong>Log pseudonymous exposure</strong><p>Record the decision without storing the raw user identifier.</p></div></div><div className="example-code"><div><span className="code-light"/><span>Try with curl</span></div><pre>{`curl -X POST http://127.0.0.1:8000/api/evaluate \\\n  -H 'Content-Type: application/json' \\\n  -d '{"key":"${selected || 'ai_search'}",\n       "user_id":"user_42",\n       "environment":"${environment}"}'`}</pre></div></section></div>}
+        {!loading && page === 'operations' && <OperationsCenter overview={operations} canEdit={canEdit} busy={busy} onRefresh={() => void refresh()} onRollback={(flag) => void rollbackRelease(flag)} />}
         {!loading && page === 'audit' && <section className="panel audit-panel"><div className="panel-head"><div><h3>Configuration change history</h3><p>An append-only record of feature-flag operations</p></div><span className="range-pill"><FileClock size={15}/> Latest {audits.length}</span></div><div className="audit-list">{audits.map((a, i) => <div className="audit-row" key={a.id}><div className={`audit-icon ${a.action === 'updated' ? 'audit-updated' : ''}`}>{a.action === 'updated' ? <Settings2 size={17}/> : a.action === 'seed' ? <Sparkles size={16}/> : <Plus size={17}/>}</div>{i !== audits.length - 1 && <span className="audit-connector"/>}<div className="audit-body"><div><strong>{a.flag_key}</strong><span className="audit-action">{a.action}</span></div><p><b>{a.actor}</b> {a.action === 'updated' ? 'updated feature configuration' : a.action === 'seed' ? 'initialized the demo flag' : 'created a new feature flag'}</p>{a.action === 'updated' && <div className="change-detail">{typeof a.before.rollout === 'number' && a.before.rollout !== a.after.rollout && <span>Rollout: {String(a.before.rollout)}% <ArrowRight size={11}/> {String(a.after.rollout)}%</span>}{a.before.enabled !== a.after.enabled && <span>Enabled: {String(a.before.enabled)} <ArrowRight size={11}/> {String(a.after.enabled)}</span>}</div>}</div><span className="audit-time">{timeAgo(a.created_at)}</span></div>)}{audits.length === 0 && <div className="empty">No audit entries yet.</div>}</div></section>}
         {!loading && page === 'experiments' && <section className="panel experiment-panel">
           <div className="panel-head"><div><h3>Experiment analysis</h3><p>Compare unique exposed users in control versus treatment</p></div><span className="code-badge">Two-proportion z-test</span></div>
