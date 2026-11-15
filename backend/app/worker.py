@@ -1,5 +1,4 @@
 """Outbox publisher and Kafka consumer. Run in separate processes."""
-import json
 import logging
 import os
 import sys
@@ -11,7 +10,8 @@ from sqlalchemy import select
 from sqlalchemy.exc import IntegrityError
 
 from .db import SessionLocal
-from .models import EventOutbox, EventReceipt
+from .models import DeadLetterEvent, EventOutbox, EventReceipt
+from .event_validation import validate_event
 
 logging.basicConfig(level=logging.INFO)
 log = logging.getLogger("launchpilot.worker")
@@ -50,7 +50,23 @@ def consume_forever():
             if msg.error():
                 log.warning("Kafka consumer error: %s", msg.error())
                 continue
-            data = json.loads(msg.value())
+            try:
+                data = validate_event(msg.value())
+            except (ValueError, TypeError, UnicodeError) as exc:
+                # Store poison messages durably before advancing the offset.
+                with SessionLocal() as db:
+                    db.add(DeadLetterEvent(
+                        id=str(uuid4()), topic=msg.topic(), partition=msg.partition(), offset=msg.offset(),
+                        payload_json=(msg.value() or b"")[:8192].decode("utf-8", errors="replace"),
+                        reason=f"{type(exc).__name__}: {str(exc)[:180]}",
+                    ))
+                    try:
+                        db.commit()
+                    except IntegrityError:
+                        db.rollback()  # Kafka position already quarantined.
+                log.error("Quarantined malformed Kafka record %s[%s]@%s", msg.topic(), msg.partition(), msg.offset())
+                consumer.commit(message=msg, asynchronous=False)
+                continue
             with SessionLocal() as db:
                 db.add(EventReceipt(id=str(uuid4()), event_id=data["event_id"], event_type=data["type"]))
                 try:
