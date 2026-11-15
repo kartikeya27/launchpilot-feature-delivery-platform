@@ -1,6 +1,9 @@
 # LaunchPilot
 ### Feature Delivery & Release Operations Platform
 
+**Languages represented in this repository:**
+![Python](https://img.shields.io/badge/Python-3776AB?logo=python&logoColor=white) ![TypeScript](https://img.shields.io/badge/TypeScript-3178C6?logo=typescript&logoColor=white) ![HTML](https://img.shields.io/badge/HTML-E34F26?logo=html5&logoColor=white) ![CSS](https://img.shields.io/badge/CSS-1572B6?logo=css3&logoColor=white) ![Shell](https://img.shields.io/badge/Shell-4EAA25?logo=gnubash&logoColor=white) ![Terraform](https://img.shields.io/badge/Terraform-7B42BC?logo=terraform&logoColor=white)
+
 **Ship gradually. Measure outcomes. Detect unhealthy rollouts. Roll back safely.**
 
 LaunchPilot is a working **React + FastAPI** release-control application demonstrating progressive feature delivery and operational reliability. Operators create feature flags, target audiences, evaluate deterministic rollouts, examine exposure/conversion activity, inspect a transactional event pipeline, and use manual or *opt-in* SLO-triggered rollback.
