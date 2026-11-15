@@ -46,7 +46,7 @@ def set_cached_flag(flag) -> None:
         return
     fields = ("id", "key", "salt", "environment", "enabled", "rollout", "version", "targeting_json")
     try:
-        r.setex(cache_key(flag.key, flag.environment), int(os.getenv("CACHE_TTL_SECONDS", "15")), json.dumps({x: getattr(flag, x) for x in fields}))
+        r.setex(cache_key(flag.key, flag.environment), int(os.getenv("CACHE_TTL_SECONDS", "15")), json.dumps({x: getattr(flag, x, "{}") if x == "targeting_json" else getattr(flag, x) for x in fields}))
     except Exception as exc:
         logger.warning("Redis write unavailable: %s", type(exc).__name__)
 
