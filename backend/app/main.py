@@ -43,6 +43,8 @@ app = FastAPI(title="LaunchPilot API", version="1.0.0", description="Progressive
 app.add_middleware(CORSMiddleware, allow_origins=os.getenv("CORS_ORIGINS", "http://localhost:5173,http://127.0.0.1:5173").split(","), allow_methods=["GET", "POST", "PUT"], allow_headers=["Content-Type", "Authorization"])
 app.middleware("http")(metrics_middleware)
 instrument(app)
+from .operations import router as operations_router
+app.include_router(operations_router)
 
 def snapshot(flag: Flag):
     return {"enabled": flag.enabled, "rollout": flag.rollout, "name": flag.name, "owner": flag.owner, "description": flag.description, "version": flag.version}
