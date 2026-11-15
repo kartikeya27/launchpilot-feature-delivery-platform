@@ -7,7 +7,7 @@ This demo records the **real Chromium UI** using the existing local Docker/Keycl
 1. Open [Product demonstration — browser recording](../.github/workflows/product-demo.yml) in the repository Actions tab.
 2. Run the workflow manually (**Run workflow**), or open a successful push/PR run.
 3. Under **Artifacts**, download **launchpilot-demo-video**. The ZIP contains `launchpilot-product-demo.webm`.
-4. Download **portfolio-demo-evidence** for the Playwright HTML report, screenshots and action/network trace.
+4. Download **product-demo-evidence** for the Playwright HTML report, screenshots and action/network trace.
 5. These artifacts expire after **7 days**. To embed a permanent demo in the README, review the downloaded WebM and host it on a platform you control.
 
 Because the actual recording requires a browser and running containers, the committed source contains the **repeatable recording script** and the GitHub workflow, not a fake or AI-rendered video.
