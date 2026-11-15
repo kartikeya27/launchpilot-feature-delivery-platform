@@ -250,3 +250,50 @@ npx playwright test --config=playwright.fullstack.config.ts --headed --workers=1
 ```
 
 The Compose workflow and cloud Terraform blueprint are distinct. The latter remains a deployment reference, not a validated public-cloud service.
+
+## Advanced rollout targeting
+
+LaunchPilot accepts optional country/plan context on `POST /api/evaluate` and retains deterministic per-user bucketing. The administrator can configure country and plan allowlists, matched by `all` or `any`, under `PUT /api/operations/flags/{id}/targeting` (requires the current flag version). Empty rules permit all contexts; missing context **does not** bypass a configured allowlist. Country and plan are not written to exposure events.
+
+Example after an administrator has configured the flag:
+
+```json
+{"key":"ai_search","environment":"staging","user_id":"synthetic-user-42","country":"US","plan":"premium","track":false}
+```
+
+The Operations page offers quick targeting edits; the API supports structured `match=any` rules when required.
+
+## Opt-in automated SLO rollback
+
+The dedicated `guardrail` Compose worker evaluates **completed, consecutive time windows** of authenticated health reports. Guardrails start **disabled for every flag**; administrators must explicitly opt in and verify trusted health reporting. The default limits are 5% error rate or 1000 ms p95, 20 reports per 60-second window, and 2 consecutive breached windows. Empty or incomplete windows never trigger a rollback. On a sustained breach the worker atomically disables the flag, sets rollout to 0, invalidates Redis, and records evidence in the audit trail; it does not deploy code.
+
+Administrators can configure the policy through `PUT /api/operations/flags/{id}/guardrail`, and a trusted service with administrator authorization can POST a measured request outcome to `/api/operations/flags/{id}/health`:
+
+```json
+{"error":true,"latency_ms":2300}
+```
+
+Reports are server-timestamped, bounded, and do not include user identifiers. The `/api/operations/guardrails/check` endpoint runs one immediate evaluation. **Important:** The guardrail consumes these explicitly supplied per-feature measurements; it does not yet scrape external customer application SLOs or automatically infer downstream failures. Integrate a trusted telemetry reporter before relying on it for a real production rollback policy.
+
+## Kafka poison-message quarantine and replay
+
+The consumer validates each event envelope, durably quarantines invalid messages in the `event_dead_letters` table, and only then commits the Kafka offset. Message contents are capped at 8 KiB. Valid receipt ingestion remains idempotent.
+
+Administrators can inspect unreplayed records at `GET /api/operations/dead-letters`. After correcting the event envelope they can POST validated fields to `/api/operations/dead-letters/{id}/replay`. Replay is **manual**, writes a fresh event into the transactional outbox, records the administrator and reason in audit history, and rejects duplicate requests. The Kafka poison-message GitHub integration test verifies quarantine against the real broker.
+
+## Dedicated, bounded load tests
+
+`scripts/load_test.py` measures request throughput, p50/p95/p99 latency, HTTP statuses and error rate with explicit nonzero exit on threshold violation. By default it refuses remote hosts; a remote target requires `--allow-remote` **and authorization to test that system**. Local test:
+
+```bash
+python3 scripts/load_test.py --url http://127.0.0.1:8000 \
+  --requests 100 --concurrency 8 --p95-ms 2000 --max-error-rate 0.01
+```
+
+For flag evaluation in demo mode add `--flag ai_search` (requests set `track=false` to avoid database writes); for OIDC add `--token` with a properly scoped access token. The **Bounded load smoke** workflow tests a temporary local evaluation API. It is a smoke benchmark, not evidence of public-cloud scale capacity.
+
+## Terraform verification versus real GCP deployment
+
+The **Terraform blueprint validation** workflow runs `terraform init -backend=false` and `terraform validate` without cloud credentials or changes to cloud resources. A separate read-only `scripts/cloud_smoke.sh https://YOUR-CLOUD-RUN-URL` script checks a running HTTPS deployment, database readiness, and rejection of unauthenticated API requests.
+
+A real GCP deployment **has not been performed or verified** from this repository. It requires an authorized Google Cloud project, billing, external OIDC issuer/redirect setup, secrets, a configured Terraform state backend, plan review, security review, and explicit permission to create billable resources. The blueprint should be reviewed/hardened before any Internet exposure; this repository intentionally does not run `terraform apply` in GitHub Actions.
