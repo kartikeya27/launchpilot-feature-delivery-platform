@@ -1,4 +1,5 @@
 import { expect, test, type Page } from '@playwright/test'
+import { demoPassword } from '../demo-credentials'
 
 async function login(page: Page, username: string, password: string) {
   await page.goto('/')
@@ -11,7 +12,7 @@ async function login(page: Page, username: string, password: string) {
 }
 
 test('real Keycloak admin: create, rollout, evaluate, Kafka outbox, rollback, audit', async ({ page }) => {
-  await login(page, 'demo-admin', 'AdminDemo123!')
+  await login(page, 'demo-admin', demoPassword('admin'))
   await page.getByLabel('Environment').selectOption('staging')
 
   const key = `ops_e2e_${Date.now().toString(36)}`
@@ -62,7 +63,7 @@ test('real Keycloak admin: create, rollout, evaluate, Kafka outbox, rollback, au
 })
 
 test('real Keycloak viewer cannot access rollback controls', async ({ page }) => {
-  await login(page, 'demo-viewer', 'ViewerDemo123!')
+  await login(page, 'demo-viewer', demoPassword('viewer'))
   await page.getByLabel('Environment').selectOption('staging')
   await page.getByRole('button', { name: 'Operations' }).click()
   await expect(page.getByRole('region', { name: 'Release operations center' })).toBeVisible()

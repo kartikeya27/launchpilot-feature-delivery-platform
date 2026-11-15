@@ -126,3 +126,32 @@ def test_configuration_and_dlq_are_admin_only(client):
         }).status_code == 403
     finally:
         main.app.dependency_overrides.clear()
+
+
+def test_outbox_publish_requires_acknowledged_delivery():
+    """No callback or a failed callback must leave the durable row pending."""
+    from types import SimpleNamespace
+    from app.worker import publish_one
+
+    item = SimpleNamespace(id=str(uuid4()), topic="launchpilot.events.v1",
+                           payload_json='{"synthetic":true}')
+
+    class StubProducer:
+        def __init__(self, mode):
+            self.mode = mode
+            self.callback = None
+
+        def produce(self, topic, key, value, on_delivery):
+            assert (topic, key, value) == (item.topic, item.id, item.payload_json)
+            self.callback = on_delivery
+
+        def flush(self, timeout):
+            assert timeout > 0
+            if self.mode == "no_ack":
+                return 1
+            self.callback(None if self.mode == "success" else Exception("broker unavailable"), None)
+            return 0
+
+    assert publish_one(StubProducer("success"), item) is True
+    assert publish_one(StubProducer("delivery_error"), item) is False
+    assert publish_one(StubProducer("no_ack"), item) is False

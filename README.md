@@ -73,19 +73,34 @@ This option uses **SQLite and localhost-only demo authentication**. It does **no
 Requirements: Docker Desktop (Mac Apple Silicon supported; provide adequate memory, ideally at least 8 GB).
 
 ```bash
+python3 scripts/setup_local_credentials.py
 docker compose -f compose.production.yaml config --quiet
 docker compose -f compose.production.yaml up --build -d
 docker compose -f compose.production.yaml ps
 ```
 
-Open http://localhost:8000 (use **localhost**, not 127.0.0.1, for the local Keycloak redirect). The repository seeds synthetic, disposable local accounts:
+Open http://localhost:8000 (use **localhost**, not 127.0.0.1, for the local Keycloak redirect). The repository seeds synthetic, disposable local accounts with **random, machine-local passwords**:
 
-| Role | User | Local-only password |
+| Role | User | Permissions |
 | --- | --- | --- |
-| Admin | `demo-admin` | `AdminDemo123!` |
-| Viewer | `demo-viewer` | `ViewerDemo123!` |
+| Admin | `demo-admin` | Manage flags, rollouts and rollback |
+| Viewer | `demo-viewer` | Read-only operations |
 
-Never reuse these credentials for a public or shared environment. Other local services: [Keycloak](http://localhost:8081), [Jaeger](http://localhost:16686), [Prometheus](http://localhost:9090), and [Grafana](http://localhost:3000).
+Run `python3 scripts/setup_local_credentials.py` once before launching the Compose stack. It generates unique credentials in the **gitignored** `.env` file (owner-only permissions), preserving any other settings already there. For the local demo account passwords, run this **on your Mac**:
+
+```bash
+grep -E '^DEMO_(ADMIN|VIEWER)_PASSWORD=' .env
+```
+
+Do not share that command's output or commit `.env`. The scripts and browser tests read the locally generated values; GitHub Actions generates independent disposable values automatically.
+
+**Existing local Keycloak users:** realm passwords are applied on initial import. If your Mac already ran the previous Keycloak container, recreate only the **disposable Keycloak container** to import the new demo passwords:
+
+```bash
+docker compose -f compose.production.yaml up -d --force-recreate keycloak
+```
+
+Do not use `down -v` on a stack with data you want to keep. Existing PostgreSQL credentials remain unchanged for compatibility with saved local volumes. Never use these demo accounts, service credentials or this local configuration in a public deployment. Other local services: [Keycloak](http://localhost:8081), [Jaeger](http://localhost:16686), [Prometheus](http://localhost:9090), and [Grafana](http://localhost:3000).
 
 ```bash
 curl -fsS http://localhost:8000/api/health/ready
@@ -126,7 +141,7 @@ npx playwright install chromium
 npx playwright test --config=playwright.fullstack.config.ts
 ```
 
-For the standalone demo recording, see [docs/demo.md](docs/demo.md).
+For the standalone demo recording, see [docs/demo.md](docs/demo.md). Real-stack Playwright tests read your ignored `.env` automatically; run the credential setup script first.
 
 ## Stack
 

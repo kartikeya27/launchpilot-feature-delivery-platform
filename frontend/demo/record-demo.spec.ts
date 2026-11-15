@@ -1,4 +1,5 @@
 import { expect, test, type Page } from '@playwright/test'
+import { demoPassword } from '../demo-credentials'
 
 /**
  * Public product demo recorded on the disposable local Compose stack.
@@ -31,7 +32,7 @@ test('record a verified checkout rollout and manual recovery walkthrough', async
   await page.getByRole('button', { name: 'Sign in with OIDC' }).click()
   await expect(page.locator('#username')).toBeVisible()
   await page.locator('#username').fill('demo-admin')
-  await page.locator('#password').fill('AdminDemo123!')
+  await page.locator('#password').fill(demoPassword('admin'))
   await page.locator('#kc-login').click()
   await expect(page.getByRole('heading', { name: /Good morning, developer/i })).toBeVisible()
 
