@@ -7,8 +7,11 @@ TOPIC="launchpilot.events.v1"
 KAFKA_TOPICS="/opt/kafka/bin/kafka-topics.sh"
 
 topic_ready() {
-  "${COMPOSE[@]}" exec -T kafka "$KAFKA_TOPICS" --bootstrap-server localhost:9092 \
-    --describe --topic "$TOPIC" 2>/dev/null | grep -q "Topic: $TOPIC"
+  # Listing names avoids parsing Kafka's version-dependent --describe formatting.
+  local topics
+  topics=$("${COMPOSE[@]}" exec -T kafka "$KAFKA_TOPICS" \
+    --bootstrap-server localhost:9092 --list 2>/dev/null) || return 1
+  printf '%s\n' "$topics" | grep -Fxq "$TOPIC"
 }
 
 echo "Ensuring the event topic exists and the broker is ready before the outage"
@@ -35,6 +38,10 @@ for i in $(seq 1 90); do
 done
 if [ "$topic_visible" != true ]; then
   echo "FAIL: topic was not visible before the outage"
+  echo "Current Kafka topics and requested topic metadata:"
+  "${COMPOSE[@]}" exec -T kafka "$KAFKA_TOPICS" --bootstrap-server localhost:9092 --list || true
+  "${COMPOSE[@]}" exec -T kafka "$KAFKA_TOPICS" --bootstrap-server localhost:9092 \
+    --describe --topic "$TOPIC" || true
   "${COMPOSE[@]}" logs --tail=100 kafka
   exit 1
 fi
