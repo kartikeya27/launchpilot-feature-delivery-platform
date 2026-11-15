@@ -57,7 +57,9 @@ def operations_overview(
         "environment": environment,
         "flags": [
             {"id": f.id, "key": f.key, "name": f.name, "enabled": f.enabled,
-             "rollout": f.rollout, "version": f.version}
+             "rollout": f.rollout, "version": f.version,
+             "targeting": json.loads(f.targeting_json or "{}"),
+             "guardrail_enabled": bool(db.get(GuardPolicy, f.id) and db.get(GuardPolicy, f.id).enabled)}
             for f in flags
         ],
         "pipeline": {
