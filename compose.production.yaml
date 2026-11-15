@@ -5,7 +5,7 @@ x-api-env: &api-env
   AUTH_MODE: oidc
   AUTO_CREATE_SCHEMA: "false"
   SEED_DEMO: "true"
-  DATABASE_URL: postgresql+psycopg://launchpilot:local-only-db-pass@postgres:5432/launchpilot
+  DATABASE_URL: postgresql+psycopg://launchpilot:${LAUNCHPILOT_DB_PASSWORD:?Run python3 scripts/setup_local_credentials.py}@postgres:5432/launchpilot
   REDIS_URL: redis://redis:6379/0
   EVENT_TRANSPORT: kafka
   KAFKA_BOOTSTRAP_SERVERS: kafka:9092
@@ -21,7 +21,7 @@ services:
     environment:
       POSTGRES_DB: launchpilot
       POSTGRES_USER: launchpilot
-      POSTGRES_PASSWORD: local-only-db-pass
+      POSTGRES_PASSWORD: ${LAUNCHPILOT_DB_PASSWORD:?Run python3 scripts/setup_local_credentials.py}
     healthcheck:
       test: ["CMD-SHELL", "pg_isready -U launchpilot -d launchpilot"]
       interval: 5s
@@ -56,7 +56,9 @@ services:
     command: start-dev --import-realm
     environment:
       KC_BOOTSTRAP_ADMIN_USERNAME: localadmin
-      KC_BOOTSTRAP_ADMIN_PASSWORD: local-only-keycloak-pass
+      KC_BOOTSTRAP_ADMIN_PASSWORD: ${KEYCLOAK_ADMIN_PASSWORD:?Run python3 scripts/setup_local_credentials.py}
+      DEMO_ADMIN_PASSWORD: ${DEMO_ADMIN_PASSWORD:?Run python3 scripts/setup_local_credentials.py}
+      DEMO_VIEWER_PASSWORD: ${DEMO_VIEWER_PASSWORD:?Run python3 scripts/setup_local_credentials.py}
       KC_HOSTNAME: http://localhost:8081
       KC_HTTP_ENABLED: "true"
     ports: ["127.0.0.1:8081:8080"]
@@ -134,7 +136,7 @@ services:
     ports: ["127.0.0.1:3000:3000"]
     environment:
       GF_SECURITY_ADMIN_USER: admin
-      GF_SECURITY_ADMIN_PASSWORD: local-only-grafana-pass
+      GF_SECURITY_ADMIN_PASSWORD: ${GRAFANA_ADMIN_PASSWORD:?Run python3 scripts/setup_local_credentials.py}
     volumes: ["./infra/grafana/provisioning:/etc/grafana/provisioning:ro"]
     depends_on: [prometheus]
 volumes:
