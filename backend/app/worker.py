@@ -5,7 +5,7 @@ import sys
 import time
 from datetime import datetime, timezone
 from uuid import uuid4
-from confluent_kafka import Consumer, Producer
+from confluent_kafka import Consumer, Producer, KafkaException
 from sqlalchemy import select
 from sqlalchemy.exc import IntegrityError
 
@@ -22,18 +22,42 @@ def kafka_config():
         conf.update({"security.protocol": os.environ["KAFKA_SECURITY_PROTOCOL"], "sasl.mechanism": os.getenv("KAFKA_SASL_MECHANISM", "PLAIN"), "sasl.username": os.environ["KAFKA_SASL_USERNAME"], "sasl.password": os.environ["KAFKA_SASL_PASSWORD"]})
     return conf
 
+def publish_one(producer, item) -> bool:
+    """Publish and wait for the broker acknowledgement before updating the outbox."""
+    deliveries = []
+    producer.produce(
+        item.topic, key=item.id, value=item.payload_json,
+        on_delivery=lambda err, _msg: deliveries.append(err),
+    )
+    remaining = producer.flush(18)
+    return remaining == 0 and deliveries == [None]
+
+
 def publish_forever():
-    producer = Producer({**kafka_config(), "enable.idempotence": True, "acks": "all"})
+    # Recreate the client after a failed acknowledgement. An idempotent producer
+    # can become unusable across broker restarts; the durable outbox is the
+    # source of truth and the receipt consumer safely deduplicates re-delivery.
+    producer = None
     while True:
         with SessionLocal() as db:
             # Skip locked permits multiple workers without double-claiming a row.
             pending = db.scalars(select(EventOutbox).where(EventOutbox.published_at.is_(None)).order_by(EventOutbox.created_at).limit(100).with_for_update(skip_locked=True)).all()
             for item in pending:
-                delivered = []
-                producer.produce(item.topic, key=item.id, value=item.payload_json, on_delivery=lambda err, msg: delivered.append(err))
-                remaining = producer.flush(10)
-                if remaining or delivered != [None]:
-                    log.warning("Kafka delivery deferred for %s", item.id)
+                try:
+                    if producer is None:
+                        producer = Producer({
+                            **kafka_config(), "enable.idempotence": True,
+                            "acks": "all", "message.timeout.ms": 15000,
+                        })
+                    acknowledged = publish_one(producer, item)
+                except (BufferError, KafkaException) as exc:
+                    log.warning("Kafka publish attempt failed for %s: %s", item.id, exc)
+                    acknowledged = False
+                if not acknowledged:
+                    log.warning("Kafka delivery deferred for %s; resetting producer", item.id)
+                    # No publish mark was committed. Retry this same outbox row
+                    # on the next pass with a fresh producer.
+                    producer = None
                     break
                 item.published_at = datetime.now(timezone.utc)
                 db.commit()
