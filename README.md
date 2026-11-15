@@ -7,7 +7,7 @@ LaunchPilot is a working **React + FastAPI** release-control application demonst
 
 The application runs in two modes: a quick **SQLite + demo-auth** development mode and a **Docker Compose integration environment** using real Keycloak, PostgreSQL, Redis, and Kafka. It is a **reference implementation**, not an internet-hardened, publicly deployed SaaS.
 
-[Architecture deep dive](docs/architecture.md) · [2-minute demonstration guide](docs/demo.md) · [Record the browser walkthrough](.github/workflows/product-demo.yml) · [GitHub Actions](https://github.com/kartikeya27/launchpilot-feature-delivery-platform/actions)
+[Architecture deep dive](docs/architecture.md) · [Product demonstration guide](docs/demo.md) · [Record the browser walkthrough](.github/workflows/product-demo.yml) · [GitHub Actions](https://github.com/kartikeya27/launchpilot-feature-delivery-platform/actions)
 
 [![CI](https://github.com/kartikeya27/launchpilot-feature-delivery-platform/actions/workflows/ci.yml/badge.svg)](https://github.com/kartikeya27/launchpilot-feature-delivery-platform/actions/workflows/ci.yml)
 [![Full-stack](https://github.com/kartikeya27/launchpilot-feature-delivery-platform/actions/workflows/fullstack.yml/badge.svg)](https://github.com/kartikeya27/launchpilot-feature-delivery-platform/actions/workflows/fullstack.yml)
@@ -96,7 +96,7 @@ docker compose -f compose.production.yaml down
 
 **Never run `down -v` against a stack containing data you want to keep.** The full-stack CI workflow uses disposable test volumes and cleans those up automatically.
 
-## Watch the 2-minute demonstration
+## Watch the product demonstration
 
 A dedicated Playwright scenario captures a **real browser video**, screenshots, and trace evidence using synthetic staging data and the local Keycloak-backed environment. It covers login → flag creation → progressive rollout → user evaluation → event counters → manual rollback → audit.
 
@@ -104,7 +104,7 @@ A dedicated Playwright scenario captures a **real browser video**, screenshots, 
 
 The video demonstrates **manual rollback**, not an automatically triggered guardrail. Its infrastructure explanation comes from tested components and [docs/architecture.md](docs/architecture.md); the short recording does not itself prove a live SLO breach or disaster-recovery event.
 
-Use [docs/demo.md](docs/demo.md) for the 90–120 second narration, recorded scenes, and an optional guided walkthrough.
+Use [docs/demo.md](docs/demo.md) for narration, recorded scenes, and an optional guided walkthrough.
 
 ## Quality gates
 
