@@ -100,7 +100,7 @@ docker compose -f compose.production.yaml down
 
 A dedicated Playwright scenario captures a **real browser video**, screenshots, and trace evidence using synthetic staging data and the local Keycloak-backed environment. It covers login → flag creation → progressive rollout → user evaluation → event counters → manual rollback → audit.
 
-**[Open the product demonstration workflow](https://github.com/kartikeya27/launchpilot-feature-delivery-platform/actions/workflows/portfolio-demo.yml)** → open a successful run → **Artifacts** → download `launchpilot-demo-video` (WebM recording). The workflow also uploads `product-demo-evidence` with an HTML report and trace. Artifacts are retained for seven days, so download the video if you want a permanent copy. A later public video URL can be added here after the recording is reviewed and published.
+**[Open the product demonstration workflow](https://github.com/kartikeya27/launchpilot-feature-delivery-platform/actions/workflows/product-demo.yml)** → open a successful run → **Artifacts** → download `launchpilot-demo-video` (WebM recording). The workflow also uploads `product-demo-evidence` with an HTML report and trace. Artifacts are retained for seven days, so download the video if you want a permanent copy. A later public video URL can be added here after the recording is reviewed and published.
 
 The video demonstrates **manual rollback**, not an automatically triggered guardrail. Its infrastructure explanation comes from tested components and [docs/architecture.md](docs/architecture.md); the short recording does not itself prove a live SLO breach or disaster-recovery event.
 
