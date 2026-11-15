@@ -3,6 +3,34 @@
 set -euo pipefail
 COMPOSE=(docker compose -f compose.production.yaml)
 
+TOPIC="launchpilot.events.v1"
+KAFKA_TOPICS="/opt/kafka/bin/kafka-topics.sh"
+
+topic_ready() {
+  "${COMPOSE[@]}" exec -T kafka "$KAFKA_TOPICS" --bootstrap-server localhost:9092 \
+    --describe --topic "$TOPIC" 2>/dev/null | grep -q "Topic: $TOPIC"
+}
+
+echo "Ensuring the event topic exists and the broker is ready before the outage"
+topic_created=false
+for i in $(seq 1 45); do
+  if "${COMPOSE[@]}" exec -T kafka "$KAFKA_TOPICS" --bootstrap-server localhost:9092 \
+    --create --if-not-exists --topic "$TOPIC" --partitions 1 --replication-factor 1 >/dev/null 2>&1; then
+    topic_created=true
+    break
+  fi
+  sleep 2
+done
+if [ "$topic_created" != true ]; then
+  echo "FAIL: Kafka did not accept topic creation before outage"
+  exit 1
+fi
+if ! topic_ready; then
+  echo "FAIL: topic was not visible before the outage"
+  exit 1
+fi
+
+
 echo "Stopping Kafka to exercise transactional-outbox durability"
 "${COMPOSE[@]}" stop kafka
 
@@ -37,9 +65,24 @@ echo "Outbox event persisted while Kafka unavailable: $EVENT_ID"
 pending=$("${COMPOSE[@]}" exec -T postgres psql -U launchpilot -d launchpilot -Atc "SELECT COUNT(*) FROM event_outbox WHERE id='$EVENT_ID' AND published_at IS NULL")
 test "$pending" = 1 || { echo "FAIL: event not durably pending"; exit 1; }
 
-echo "Restarting Kafka, waiting for publisher and consumer receipt"
+echo "Restarting Kafka and checking broker/topic readiness"
 "${COMPOSE[@]}" start kafka
-for i in $(seq 1 90); do
+broker_ready=false
+for i in $(seq 1 60); do
+  if topic_ready; then
+    broker_ready=true
+    break
+  fi
+  sleep 2
+done
+if [ "$broker_ready" != true ]; then
+  echo "FAIL: Kafka topic did not recover"
+  "${COMPOSE[@]}" logs --tail=100 kafka
+  exit 1
+fi
+
+echo "Broker recovered. Waiting for automatic outbox publishing and consumption"
+for i in $(seq 1 120); do
   # Exactly one receipt exists for the event ID after at-least-once delivery.
   received=$("${COMPOSE[@]}" exec -T postgres psql -U launchpilot -d launchpilot -Atc "SELECT COUNT(*) FROM event_receipts WHERE event_id='$EVENT_ID'")
   if [ "$received" = "1" ]; then
@@ -51,5 +94,11 @@ for i in $(seq 1 90); do
   sleep 2
 done
 echo "FAIL: event not consumed after Kafka recovery"
+echo "Outbox publish state and matching receipts:"
+"${COMPOSE[@]}" exec -T postgres psql -U launchpilot -d launchpilot -c \
+  "SELECT id, published_at FROM event_outbox WHERE id='$EVENT_ID';"
+"${COMPOSE[@]}" exec -T postgres psql -U launchpilot -d launchpilot -c \
+  "SELECT event_id, ingested_at FROM event_receipts WHERE event_id='$EVENT_ID';"
+"${COMPOSE[@]}" ps kafka publisher consumer
 "${COMPOSE[@]}" logs --tail=100 publisher consumer kafka
 exit 1
