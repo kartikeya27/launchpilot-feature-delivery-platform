@@ -1,5 +1,5 @@
 from datetime import datetime, timezone
-from sqlalchemy import Boolean, DateTime, ForeignKey, Integer, String, Text, UniqueConstraint
+from sqlalchemy import Boolean, DateTime, Float, ForeignKey, Integer, String, Text, UniqueConstraint
 from sqlalchemy.orm import Mapped, mapped_column
 from .db import Base
 
@@ -18,6 +18,7 @@ class Flag(Base):
     enabled: Mapped[bool] = mapped_column(Boolean, default=False)
     rollout: Mapped[int] = mapped_column(Integer, default=0)
     salt: Mapped[str] = mapped_column(String(40))
+    targeting_json: Mapped[str] = mapped_column(Text, default="{}")
     version: Mapped[int] = mapped_column(Integer, default=1)
     created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=utcnow)
     updated_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=utcnow, onupdate=utcnow)
@@ -63,3 +64,33 @@ class EventReceipt(Base):
     event_id: Mapped[str] = mapped_column(String(36), unique=True, index=True)
     event_type: Mapped[str] = mapped_column(String(30))
     ingested_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=utcnow)
+
+class GuardPolicy(Base):
+    __tablename__ = "guard_policies"
+    flag_id: Mapped[str] = mapped_column(ForeignKey("flags.id", ondelete="CASCADE"), primary_key=True)
+    enabled: Mapped[bool] = mapped_column(Boolean, default=False)
+    max_error_rate: Mapped[float] = mapped_column(Float, default=0.05)
+    max_p95_ms: Mapped[int] = mapped_column(Integer, default=1000)
+    min_samples: Mapped[int] = mapped_column(Integer, default=20)
+    window_seconds: Mapped[int] = mapped_column(Integer, default=60)
+    consecutive_windows: Mapped[int] = mapped_column(Integer, default=2)
+
+class FeatureHealthSample(Base):
+    __tablename__ = "feature_health_samples"
+    id: Mapped[str] = mapped_column(String(36), primary_key=True)
+    flag_id: Mapped[str] = mapped_column(ForeignKey("flags.id", ondelete="CASCADE"), index=True)
+    error: Mapped[bool] = mapped_column(Boolean)
+    latency_ms: Mapped[int] = mapped_column(Integer)
+    created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=utcnow, index=True)
+
+class DeadLetterEvent(Base):
+    __tablename__ = "event_dead_letters"
+    id: Mapped[str] = mapped_column(String(36), primary_key=True)
+    topic: Mapped[str] = mapped_column(String(150))
+    partition: Mapped[int] = mapped_column(Integer)
+    offset: Mapped[int] = mapped_column(Integer)
+    payload_json: Mapped[str] = mapped_column(Text)
+    reason: Mapped[str] = mapped_column(String(250))
+    failed_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=utcnow)
+    replayed_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), nullable=True)
+    __table_args__ = (UniqueConstraint("topic", "partition", "offset", name="uq_dlq_position"),)
