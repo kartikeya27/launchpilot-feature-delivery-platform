@@ -25,8 +25,17 @@ if [ "$topic_created" != true ]; then
   echo "FAIL: Kafka did not accept topic creation before outage"
   exit 1
 fi
-if ! topic_ready; then
+topic_visible=false
+for i in $(seq 1 90); do
+  if topic_ready; then
+    topic_visible=true
+    break
+  fi
+  sleep 2
+done
+if [ "$topic_visible" != true ]; then
   echo "FAIL: topic was not visible before the outage"
+  "${COMPOSE[@]}" logs --tail=100 kafka
   exit 1
 fi
 
